@@ -98,7 +98,7 @@ public class RequestHandler implements RequestHandlerLocal {
 		
 		try {
 			retval=new UserOperations(dsConn,this.logWriter,this.configurations).verifyUser(message,messageBody);
-			if(new JsonDecoder(retval).getErrorCode().equals("0")) {
+			if(new JsonDecoder(retval).getNString("ErrorCode").equals("0")) {
 				LogWriter.LOGGER.info("application authentication succesful.");
 				LogWriter.LOGGER.info("action : "+action.toUpperCase());
 				switch(action.toUpperCase()) {

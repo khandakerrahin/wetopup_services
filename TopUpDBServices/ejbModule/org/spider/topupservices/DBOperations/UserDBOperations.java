@@ -102,14 +102,17 @@ public class UserDBOperations {
 
 			} catch (SQLIntegrityConstraintViolationException de) {
 				errorCode = "1";// : Same name Already exists
+				errorMessage = "Same TRXID Already exists";
 				LogWriter.LOGGER.severe("SQLIntegrityConstraintViolationException:" + de.getMessage());
 			} catch (SQLException e) {
 				errorCode = "11";// :Inserting parameters failed
+				errorMessage = "SQLException";
 				e.printStackTrace();
 				LogWriter.LOGGER.severe("SQLException" + e.getMessage());
 			} catch (Exception e) {
 				e.printStackTrace();
 				errorCode = "10"; // :other Exception
+				errorMessage = "other Exception";
 				e.printStackTrace();
 			}
 		} finally {
@@ -119,6 +122,7 @@ public class UserDBOperations {
 					// weTopUpDS.getConnection().close();
 				} catch (SQLException e) {
 					errorCode = "-4"; // :connection close Exception
+					errorMessage = "connection close Exception";
 					e.printStackTrace();
 					LogWriter.LOGGER.severe(e.getMessage());
 				}
@@ -150,6 +154,8 @@ public class UserDBOperations {
 				errorMessage = "Update successful.";
 			} catch (SQLException e) {
 				LogWriter.LOGGER.severe(e.getMessage());
+				errorCode = "11";
+				errorMessage = "SQL Exception";
 			}
 			
 			jsonEncoder.addElement("ErrorCode", errorCode);
@@ -181,7 +187,7 @@ public class UserDBOperations {
 				weTopUpDS.closePreparedStatement();
 			} catch (SQLException e) {
 				e.printStackTrace();
-				errorCode = "-11";
+				errorCode = "11";
 				errorMessage = "SQL Exception.";
 				LogWriter.LOGGER.severe(e.getMessage());
 			}
