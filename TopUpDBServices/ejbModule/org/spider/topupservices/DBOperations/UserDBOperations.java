@@ -54,6 +54,7 @@ public class UserDBOperations {
 		JsonEncoder jsonEncoder = new JsonEncoder();
 		String errorCode = "-1";
 		String errorMessage = "General Error";
+		
 		String appPass = this.configurations.getTopUpUsers().containsKey(appname)? this.configurations.getTopUpUsers().get(appname):"";
 		
 		if(password.equals(appPass) && appPass!="") {
@@ -75,9 +76,26 @@ public class UserDBOperations {
 
 		String errorCode = "-1";
 		String errorMessage = "General Error";
+		String balanceFlag = "5";
+		String additional_info = null;
+		double balance = 0.0;
+		
+		if(operator.equals("0") || operator.equals("1")) {
+			balance = getBalance("1");
+		}
+		else {
+			balance = getBalance("2");
+		}
+		 if(balance>Integer.parseInt(amount)) {
+			 balanceFlag = "0"; 
+		 }
+		 else {
+			 balanceFlag = "5";
+			 additional_info = "lb";
+		 }
 		
 		try {
-			String sqlTransactionLog = "INSERT INTO transaction_log (user_id,operator,opType,payee_name,payee_phone,payee_email,amount,trx_id,remarks) " + "VALUES (?,?,?,?,?,?,?,?,?)";
+			String sqlTransactionLog = "INSERT INTO transaction_log (user_id,operator,opType,payee_name,payee_phone,payee_email,amount,trx_id,remarks,additional_info) " + "VALUES (?,?,?,?,?,?,?,?,?,?)";
 
 			// params
 			//"user_id":"2441139","operator":"Airtel","opType":"0","payee_name":"shaker","payee_phone":"+8801751501178","payee_email":"shaker@spiderdxb.com","amount":"100","trx_id":"TRX2441139","remarks":"this is just a test"
@@ -92,6 +110,7 @@ public class UserDBOperations {
 				weTopUpDS.getPreparedStatement().setString(7, amount);
 				weTopUpDS.getPreparedStatement().setString(8, trx_id);
 				weTopUpDS.getPreparedStatement().setString(9, remarks);
+				weTopUpDS.getPreparedStatement().setString(10, additional_info);
 
 				weTopUpDS.execute();
 
@@ -102,7 +121,7 @@ public class UserDBOperations {
 
 			} catch (SQLIntegrityConstraintViolationException de) {
 				errorCode = "1";// : Same name Already exists
-				errorMessage = "Same TRXID Already exists";
+				errorMessage = "SQLIntegrityConstraintViolationExceptions";
 				LogWriter.LOGGER.severe("SQLIntegrityConstraintViolationException:" + de.getMessage());
 			} catch (SQLException e) {
 				errorCode = "11";// :Inserting parameters failed
@@ -131,6 +150,7 @@ public class UserDBOperations {
 		// LogWriter.LOGGER.info("UserID:"+userId);
 		jsonEncoder.addElement("ErrorCode", errorCode);
 		jsonEncoder.addElement("ErrorMessage", errorMessage);
+		jsonEncoder.addElement("BalanceFlag", balanceFlag);
 		jsonEncoder.buildJsonObject();
 		// errorCode=jsonEncoder;
 
@@ -199,5 +219,28 @@ public class UserDBOperations {
 			jsonEncoder.addElement("top_up_status", top_up_status);
 			jsonEncoder.buildJsonObject();
 			return jsonEncoder;
+		}
+		
+		public double getBalance(String id) {
+			// id = 1 = topUp
+			// id = 2 = paywell
+			double balance = 0.0;
+			String sql = "SELECT retailer_balance FROM `balance_info` WHERE id=?";
+
+			try {
+				weTopUpDS.prepareStatement(sql);
+				weTopUpDS.getPreparedStatement().setString(1, id);
+				weTopUpDS.executeQuery();
+				if (weTopUpDS.getResultSet().next()) {
+					balance = weTopUpDS.getResultSet().getDouble(1);
+				}
+				weTopUpDS.closeResultSet();
+				weTopUpDS.closePreparedStatement();
+			} catch (SQLException e) {
+				e.printStackTrace();
+				LogWriter.LOGGER.severe(e.getMessage());
+			}
+			
+			return balance;
 		}
 }

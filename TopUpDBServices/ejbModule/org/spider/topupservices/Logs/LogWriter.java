@@ -30,7 +30,7 @@ public class LogWriter {
 	String target;
 	String inputParameters;
 	String response;
-	String appID = "0";
+	String appID = "0"; // for TopUpDBServices
 	
 	boolean force;
 	private String subString(String str,int endIndex){
