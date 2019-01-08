@@ -8,5 +8,5 @@ package org.spider.topupservices.Initializations;
  *
  */
 public class SecretKey {
-	public static final String SECRETKEY="$piderM@!lerEnc~ypt";//"my_secret_key_to_encrypt";
+	public static final String SECRETKEY="$piderT@perEnc~ypt";//"my_secret_key_to_encrypt";
 }

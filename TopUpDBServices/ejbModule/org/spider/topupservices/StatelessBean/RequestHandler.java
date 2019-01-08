@@ -3,9 +3,6 @@ package org.spider.topupservices.StatelessBean;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.HashMap;
-
-import com.google.gson.Gson;
 
 import javax.annotation.PostConstruct; 
 import javax.ejb.Startup;
@@ -15,6 +12,8 @@ import javax.jms.MapMessage;
 
 import org.spider.topupservices.Engine.JsonEncoder;
 import org.spider.topupservices.Engine.JsonDecoder;
+import org.spider.topupservices.Engine.LoginProcessor;
+import org.spider.topupservices.Engine.RegistrationProcessor;
 import org.spider.topupservices.DataSources.WeTopUpDS;
 import org.spider.topupservices.Initializations.Configurations;
 import org.spider.topupservices.Logs.LogWriter;
@@ -102,8 +101,20 @@ public class RequestHandler implements RequestHandlerLocal {
 				LogWriter.LOGGER.info("application authentication succesful.");
 				LogWriter.LOGGER.info("action : "+action.toUpperCase());
 				switch(action.toUpperCase()) {
+				case "LOGIN":
+					//json: 
+					//example: { "username":"t1@sp.com", "password":"specialt1pass", "mode":"1"}
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).processLogin(message,messageBody);
+					break;
+				case "REGISTER":
+					this.logWriter.setUserId(NullPointerExceptionHandler.isNullOrEmpty(msg.getString("userId"))?"":msg.getString("userId"));
+					retval=new RegistrationProcessor(dsConn,this.logWriter,this.configurations).processUserRegistration(message,messageBody);
+					break;
 				case "INSERTTRANSACTION":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).insertTransaction(message,messageBody);
+					break;
+				case "SETPAYMENTMETHOD":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).setPaymentMethod(message,messageBody);
 					break;
 				case "UPDATEPAYMENTSTATUS":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).updatePaymentStatus(message,messageBody);

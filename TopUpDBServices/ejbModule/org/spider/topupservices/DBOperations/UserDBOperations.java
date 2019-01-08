@@ -38,15 +38,17 @@ import com.google.gson.reflect.TypeToken;
 public class UserDBOperations {
 	WeTopUpDS weTopUpDS;
 	Configurations configurations;
+	LogWriter logWriter;
 
 	// private static final Logger LOGGER =
 	// LogWriter.LOGGER.getLogger(UserDBOperations.class.getName());
 	/**
 	 * 
 	 */
-	public UserDBOperations(WeTopUpDS weTopUpDS,Configurations configurations) {
+	public UserDBOperations(WeTopUpDS weTopUpDS,Configurations configurations,LogWriter logWriter) {
 		this.weTopUpDS = weTopUpDS;
 		this.configurations = configurations;
+		this.logWriter=logWriter;
 	}
 
 	
@@ -156,6 +158,36 @@ public class UserDBOperations {
 
 		return jsonEncoder;
 	}
+		/**
+		 * Only deletes from users table
+		 * @param userId
+		 */
+		public void deleteUsersEntry(String userId) {
+			try {
+				String sqlDeleteUser="DELETE FROM users WHERE user_id=?";
+				weTopUpDS.prepareStatement(sqlDeleteUser);
+				weTopUpDS.getPreparedStatement().setString(1, userId);
+				weTopUpDS.execute();
+				weTopUpDS.closePreparedStatement();
+				LogWriter.LOGGER.info("User entry deleted");
+				this.logWriter.appendLog("dUe:rolledBack");
+			} catch (SQLException e) {
+				LogWriter.LOGGER.severe("deleteUsersEntry(): "+e.getMessage());
+				this.logWriter.setStatus(0);
+				this.logWriter.appendLog("dUe:SE");
+				this.logWriter.appendAdditionalInfo("UDO.deleteUsersEntry():"+e.getMessage());
+			}finally{
+				if(weTopUpDS.getConnection() != null){
+					try {
+						if(!weTopUpDS.isPreparedStatementClosed()) weTopUpDS.closePreparedStatement();
+					} catch (SQLException e) {
+						LogWriter.LOGGER.severe(e.getMessage());
+						this.logWriter.appendLog("s:SE");
+						this.logWriter.appendAdditionalInfo("UDO.deleteUsersEntry():"+e.getMessage());
+					}
+				}
+			}
+		}
 		
 		public JsonEncoder updateTransactionStatus(String trx_id, String status) {
 			JsonEncoder jsonEncoder = new JsonEncoder();
@@ -167,6 +199,33 @@ public class UserDBOperations {
 			try {
 				weTopUpDS.prepareStatement(sql);
 				weTopUpDS.getPreparedStatement().setString(1, status);
+				weTopUpDS.getPreparedStatement().setString(2, trx_id);
+				weTopUpDS.execute();
+				weTopUpDS.closePreparedStatement();
+				errorCode = "0";
+				errorMessage = "Update successful.";
+			} catch (SQLException e) {
+				LogWriter.LOGGER.severe(e.getMessage());
+				errorCode = "11";
+				errorMessage = "SQL Exception";
+			}
+			
+			jsonEncoder.addElement("ErrorCode", errorCode);
+			jsonEncoder.addElement("ErrorMessage", errorMessage);
+			jsonEncoder.buildJsonObject();
+			return jsonEncoder;
+		}
+		
+		public JsonEncoder updatePaymentMethod(String trx_id, String payment_status) {
+			JsonEncoder jsonEncoder = new JsonEncoder();
+			String errorCode = "-1";
+			String errorMessage = "Update failed.";
+			
+			String sql = "UPDATE `transaction_log` SET payment_status =? WHERE trx_id=?";
+
+			try {
+				weTopUpDS.prepareStatement(sql);
+				weTopUpDS.getPreparedStatement().setString(1, payment_status);
 				weTopUpDS.getPreparedStatement().setString(2, trx_id);
 				weTopUpDS.execute();
 				weTopUpDS.closePreparedStatement();

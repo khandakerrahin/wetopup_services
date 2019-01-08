@@ -27,19 +27,23 @@ public class UserOperations {
 	}
 	
 	public String verify(String appname, String apppass) {
-		return new UserDBOperations(weTopUpDS,configurations).verifyAppUser(appname, apppass).getJsonObject().toString();
+		return new UserDBOperations(weTopUpDS,configurations,logWriter).verifyAppUser(appname, apppass).getJsonObject().toString();
 	}
 	
 	public String insertTrx(String user_id,String operator,String opType,String payee_name,String payee_phone,String payee_email,String amount,String trx_id,String remarks) {
-		return new UserDBOperations(weTopUpDS,configurations).insertTransaction(user_id,operator,opType,payee_name,payee_phone,payee_email,amount,trx_id,remarks).getJsonObject().toString();
+		return new UserDBOperations(weTopUpDS,configurations,logWriter).insertTransaction(user_id,operator,opType,payee_name,payee_phone,payee_email,amount,trx_id,remarks).getJsonObject().toString();
+	}
+	
+	public String updatePaymentMethod(String trx_id, String payment_status) {
+		return new UserDBOperations(weTopUpDS,configurations,logWriter).updatePaymentMethod(trx_id, payment_status).getJsonObject().toString();
 	}
 	
 	public String updateStatus(String trx_id, String status) {
-		return new UserDBOperations(weTopUpDS,configurations).updateTransactionStatus(trx_id, status).getJsonObject().toString();
+		return new UserDBOperations(weTopUpDS,configurations,logWriter).updateTransactionStatus(trx_id, status).getJsonObject().toString();
 	}
 	
 	public String getStatus(String trx_id) {
-		return new UserDBOperations(weTopUpDS,configurations).getTransactionStatus(trx_id).getJsonObject().toString();
+		return new UserDBOperations(weTopUpDS,configurations,logWriter).getTransactionStatus(trx_id).getJsonObject().toString();
 	}
 
 	public String getTrxId(String message, String messageBody) {
@@ -109,6 +113,22 @@ public class UserOperations {
 		}
 		if (json.getErrorCode().equals("0")) {
 			retval = updateStatus(json.getNString("trx_id"), json.getNString("status"));
+		} else {
+			retval = "E:JSON string invalid";
+		}
+		return retval;
+	}
+	
+	public String setPaymentMethod(String message, String messageBody) {
+		String retval = "E";
+		JsonDecoder json;
+		if (messageBody.isEmpty()) {
+			json = new JsonDecoder(message);
+		} else {
+			json = new JsonDecoder(messageBody);
+		}
+		if (json.getErrorCode().equals("0")) {
+			retval = updatePaymentMethod(json.getNString("trx_id"), json.getNString("payment_method"));
 		} else {
 			retval = "E:JSON string invalid";
 		}
