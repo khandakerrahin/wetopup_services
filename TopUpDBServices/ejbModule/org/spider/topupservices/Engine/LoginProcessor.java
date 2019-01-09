@@ -66,6 +66,24 @@ public class LoginProcessor {
 		}
 		return retval;
 	}
+	
+	public String checkUser(String message, String messageBody) {
+		String retval="E";
+		JsonDecoder loginCredentials;
+		if(messageBody.isEmpty()) {
+			loginCredentials=new JsonDecoder(message);
+		}else {
+			loginCredentials=new JsonDecoder(messageBody);
+		}
+		//LoginProcessor loginProcessor=new LoginProcessor();
+		if(loginCredentials.getErrorCode().equals("0")) {
+			retval=this.checkUser(loginCredentials);
+		}else{
+			retval="E:JSON string invalid";
+		}
+		return retval;
+	}
+	
 	/**
 	 * 
 	 * @param id
@@ -92,6 +110,10 @@ public class LoginProcessor {
 	public String checkCredentials(JsonDecoder loginCredentials){
 		this.logWriter.setUserId(loginCredentials.getJsonObject().getString("username"));
 		return new Login(this.weTopUpDS,this.logWriter).compareCredentialsInDB(loginCredentials.getJsonObject().getString("username"),loginCredentials.getJsonObject().getString("password"),Integer.parseInt(loginCredentials.getJsonObject().getString("mode"))).getJsonObject().toString();
+	}
+	
+	public String checkUser(JsonDecoder loginCredentials){
+		return new Login(this.weTopUpDS,this.logWriter).checkUserInDB(loginCredentials.getJsonObject().getString("username"),Integer.parseInt(loginCredentials.getJsonObject().getString("mode"))).getJsonObject().toString();
 	}
 	/**
 	 * 

@@ -102,13 +102,14 @@ public class RequestHandler implements RequestHandlerLocal {
 				LogWriter.LOGGER.info("action : "+action.toUpperCase());
 				switch(action.toUpperCase()) {
 				case "LOGIN":
-					//json: 
-					//example: { "username":"t1@sp.com", "password":"specialt1pass", "mode":"1"}
 					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).processLogin(message,messageBody);
 					break;
 				case "REGISTER":
 					this.logWriter.setUserId(NullPointerExceptionHandler.isNullOrEmpty(msg.getString("userId"))?"":msg.getString("userId"));
 					retval=new RegistrationProcessor(dsConn,this.logWriter,this.configurations).processUserRegistration(message,messageBody);
+					break;
+				case "CHECKUSER":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).checkUser(message,messageBody);
 					break;
 				case "INSERTTRANSACTION":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).insertTransaction(message,messageBody);
@@ -118,6 +119,9 @@ public class RequestHandler implements RequestHandlerLocal {
 					break;
 				case "UPDATEPAYMENTSTATUS":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).updatePaymentStatus(message,messageBody);
+					break;
+				case "FETCHTRANSACTIONHISTORY":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchTransactionHistory(message,messageBody);
 					break;
 				case "GETTOPUPSTATUS":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).getTopUpStatus(message,messageBody);

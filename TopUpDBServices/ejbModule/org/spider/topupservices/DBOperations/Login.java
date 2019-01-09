@@ -122,4 +122,58 @@ public class Login {
 		
 		return jsonEncoder;
 	}
+	
+	public JsonEncoder checkUserInDB(String loginCredential, int mode) {
+		String userFlag="-2";
+		JsonEncoder jsonEncoder = new JsonEncoder();
+		String errorCode="-2";//default errorCode
+		String errorMessage = "user not found.";
+		String sql="select count(*) as counter from users_info where <mode>=?";
+		if(mode==1) { //email
+			sql=sql.replace("<mode>", "user_email");
+		}else { //phone
+			sql=sql.replace("<mode>", "phone");
+			loginCredential=this.msisdnNormalize(loginCredential);
+		}
+		try {
+			weTopUpDS.prepareStatement(sql);
+			weTopUpDS.getPreparedStatement().setString(1, loginCredential);
+			ResultSet rs = weTopUpDS.executeQuery();
+			while (rs.next()) {
+				userFlag=rs.getString(1);
+				errorCode="0";
+				errorMessage = "checked user successfully.";
+			}
+			weTopUpDS.closeResultSet();
+			weTopUpDS.closePreparedStatement();
+		}catch(NullPointerException e) {
+			errorCode="-5";//default errorCode
+			errorMessage = "User does not exist.";
+			LogWriter.LOGGER.severe(e.getMessage());
+		}
+		catch(Exception e){
+			errorCode="-3";//default errorCode
+			errorMessage = "General Exception.";
+			if(weTopUpDS.getConnection() != null) {
+				try {
+					weTopUpDS.closeResultSet();
+				} catch (SQLException e1) {
+					LogWriter.LOGGER.severe(e1.getMessage());
+				}
+				try {
+					weTopUpDS.closePreparedStatement();
+				} catch (SQLException e1) {
+					LogWriter.LOGGER.severe(e1.getMessage());
+				}
+			}
+			LogWriter.LOGGER.severe(e.getMessage());
+		}
+		jsonEncoder.addElement("ErrorCode", errorCode);
+		jsonEncoder.addElement("ErrorMessage", errorMessage);
+		jsonEncoder.addElement("userFlag", userFlag);
+		jsonEncoder.addElement("username", loginCredential);
+		jsonEncoder.buildJsonObject();
+		
+		return jsonEncoder;
+	}
 }
