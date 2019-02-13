@@ -53,6 +53,7 @@ public class UserInfo {
 	public JsonEncoder fetchUserInfo(String id, String mode) {
 		JsonEncoder jsonEncoder=new JsonEncoder();
 		String errorCode="-1";//default errorCode
+		String errorMessage="default error.";//default errorCode
 		String sql="SELECT u.user_id, u.user_name, case when u.user_email is null then '' else u.user_email end as user_email, u.user_type, u.phone, u.status FROM users_info u where u.<mode>=?";
 		if(mode.equals("1")) { //email
 			sql=sql.replace("<mode>", "user_email");
@@ -73,10 +74,12 @@ public class UserInfo {
 				jsonEncoder.addElement("status", rs.getString("status"));
 				
 				errorCode="0";
+				errorMessage = "fetch successful.";
 				this.logWriter.setStatus(1);
 				this.logWriter.appendLog("fu:S");
 			}else {
-				errorCode="-9:User details could not be retrieved";
+				errorCode="-9"; //User details could not be retrieved
+				errorMessage = "User details could not be retrieved.";
 				this.logWriter.setStatus(0);
 				this.logWriter.appendLog("fu:F");
 			}
@@ -84,12 +87,14 @@ public class UserInfo {
 			weTopUpDS.closePreparedStatement();
 		}catch(SQLException e){
 			errorCode= "-2";
+			errorMessage = "SQLException.";
 			this.logWriter.setStatus(0);
 			this.logWriter.appendLog("fu:SE");
 			LogWriter.LOGGER.severe(e.getMessage());
 			this.logWriter.appendAdditionalInfo("UserInfo.fetchUserInfo():"+e.getMessage());
 		}catch(Exception e){
 			errorCode= "-3";
+			errorMessage = "General Exception.";
 			this.logWriter.setStatus(0);
 			this.logWriter.appendLog("fu:E");
 			LogWriter.LOGGER.severe(e.getMessage());
@@ -106,6 +111,8 @@ public class UserInfo {
 //			}      
 //		}
 		jsonEncoder.addElement("ErrorCode", errorCode);
+		jsonEncoder.addElement("ErrorMessage", errorMessage);
+		
 		jsonEncoder.buildJsonObject();
 		return jsonEncoder;
 	}

@@ -71,9 +71,6 @@ public class Login {
 					retval="-1";
 					errorCode="-1";//default errorCode
 					errorMessage = "User is not activated.";
-					//this.logWriter.appendLog("ua:"+rs.getString(2));
-					//this.logWriter.appendAdditionalInfo(errorMessage);
-					
 				}
 				errorCode="0";
 				errorMessage = "User is activated.";
@@ -101,21 +98,8 @@ public class Login {
 				}
 			}
 			LogWriter.LOGGER.severe(e.getMessage());
-			//this.logWriter.setStatus(0);
-			//this.logWriter.appendLog("uc:E");
-			//this.logWriter.appendAdditionalInfo("Login.compareCred():"+e.getMessage());
 		}
-//		finally{
-//			if(weTopUpDS.getConnection() != null){
-//				try {
-//					weTopUpDS.getConnection().close();
-//				} catch (SQLException e) {
-//					LogWriter.LOGGER.severe(e.getMessage());
-//				}
-//			}      
-//		}
-//		if(retval.equals("1")) //credentials valid
-//		else if(retval.equals("0")); //username and password does not match
+
 		jsonEncoder.addElement("ErrorCode", errorCode);
 		jsonEncoder.addElement("ErrorMessage", errorMessage);
 		jsonEncoder.buildJsonObject();

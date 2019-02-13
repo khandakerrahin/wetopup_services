@@ -130,7 +130,7 @@ public class JsonDecoder {
 		try{
 			return this.jsonObject.getString(s);
 		}catch(NullPointerException n) {
-			return null;
+			return "";
 		}catch(ClassCastException cE) {
 			return null;
 		}

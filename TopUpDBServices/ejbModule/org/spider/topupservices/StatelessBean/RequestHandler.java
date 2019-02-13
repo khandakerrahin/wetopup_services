@@ -126,6 +126,9 @@ public class RequestHandler implements RequestHandlerLocal {
 				case "GETTOPUPSTATUS":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).getTopUpStatus(message,messageBody);
 					break;
+				case "FETCHSINGLETRANSACTION":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchSingleTransaction(message,messageBody);
+					break;
 				default:
 					jsonEncoder.addElement("ErrorCode", "-9");
 					jsonEncoder.addElement("ErrorMessage", "Invalid action");

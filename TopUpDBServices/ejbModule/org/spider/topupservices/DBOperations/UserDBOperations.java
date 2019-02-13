@@ -154,6 +154,8 @@ public class UserDBOperations {
 		jsonEncoder.addElement("ErrorCode", errorCode);
 		jsonEncoder.addElement("ErrorMessage", errorMessage);
 		jsonEncoder.addElement("BalanceFlag", balanceFlag);
+		jsonEncoder.addElement("Balance", ""+balance);
+		
 		jsonEncoder.buildJsonObject();
 		// errorCode=jsonEncoder;
 
@@ -284,6 +286,59 @@ public class UserDBOperations {
 		jsonEncoder.addElement("trx_id", trx_id);
 		jsonEncoder.addElement("trx_status", trx_status);
 		jsonEncoder.addElement("top_up_status", top_up_status);
+		jsonEncoder.buildJsonObject();
+		return jsonEncoder;
+	}
+	
+	public JsonEncoder getSingleTransaction(String trx_id) {
+		JsonEncoder jsonEncoder = new JsonEncoder();
+		String user_id = "";
+		String payee_phone="";
+		String amount="";
+		String operator="";
+		String opType="";
+		String payee_email="";
+		String remarks="";
+		String errorCode = "-1";
+		String errorMessage = "General error.";
+
+		String sql = "SELECT user_id, payee_phone, amount, operator, opType, payee_email, remarks FROM transaction_log WHERE trx_id=?";
+
+		try {
+			weTopUpDS.prepareStatement(sql);
+			weTopUpDS.getPreparedStatement().setString(1, trx_id);
+			weTopUpDS.executeQuery();
+			if (weTopUpDS.getResultSet().next()) {
+				user_id = weTopUpDS.getResultSet().getString(1);
+				payee_phone = weTopUpDS.getResultSet().getString(2);
+				amount = weTopUpDS.getResultSet().getString(3);
+				operator = weTopUpDS.getResultSet().getString(4);
+				opType = weTopUpDS.getResultSet().getString(5);
+				payee_email = weTopUpDS.getResultSet().getString(6);
+				remarks = weTopUpDS.getResultSet().getString(7);
+				errorCode = "0";
+				errorMessage = "getStatus successful.";
+			}
+			weTopUpDS.closeResultSet();
+			weTopUpDS.closePreparedStatement();
+		} catch (SQLException e) {
+			e.printStackTrace();
+			errorCode = "11";
+			errorMessage = "SQL Exception.";
+			LogWriter.LOGGER.severe(e.getMessage());
+		}
+
+		jsonEncoder.addElement("ErrorCode", errorCode);
+		jsonEncoder.addElement("ErrorMessage", errorMessage);
+		jsonEncoder.addElement("trx_id", trx_id);
+		jsonEncoder.addElement("user_id", user_id);
+		jsonEncoder.addElement("payee_phone", payee_phone);
+		jsonEncoder.addElement("amount", amount);
+		jsonEncoder.addElement("operator", operator);
+		jsonEncoder.addElement("opType", opType);
+		jsonEncoder.addElement("payee_email", payee_email);
+		jsonEncoder.addElement("remarks", remarks);
+		
 		jsonEncoder.buildJsonObject();
 		return jsonEncoder;
 	}

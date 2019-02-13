@@ -46,6 +46,10 @@ public class UserOperations {
 		return new UserDBOperations(weTopUpDS,configurations,logWriter).getTransactionStatus(trx_id).getJsonObject().toString();
 	}
 	
+	public String fetchSingleTransaction(String trx_id) {
+		return new UserDBOperations(weTopUpDS,configurations,logWriter).getSingleTransaction(trx_id).getJsonObject().toString();
+	}
+	
 	public String fetchTrxHistory(String userID) {
 		return new UserDBOperations(weTopUpDS,configurations,logWriter).fetchTrxHistory(userID).getJsonObject().toString();
 	}
@@ -149,6 +153,22 @@ public class UserOperations {
 		}
 		if (json.getErrorCode().equals("0")) {
 			retval = getStatus(json.getNString("trx_id"));
+		} else {
+			retval = "E:JSON string invalid";
+		}
+		return retval;
+	}
+	
+	public String fetchSingleTransaction(String message, String messageBody) {
+		String retval = "E";
+		JsonDecoder json;
+		if (messageBody.isEmpty()) {
+			json = new JsonDecoder(message);
+		} else {
+			json = new JsonDecoder(messageBody);
+		}
+		if (json.getErrorCode().equals("0")) {
+			retval = fetchSingleTransaction(json.getNString("trx_id"));
 		} else {
 			retval = "E:JSON string invalid";
 		}
