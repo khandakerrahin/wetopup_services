@@ -79,22 +79,8 @@ public class UserDBOperations {
 
 		String errorCode = "-1";
 		String errorMessage = "General Error";
-		String balanceFlag = "5";
 		String additional_info = null;
-		double balance = 0.0;
-
-		if (operator.equals("0") || operator.equals("1")) {
-			balance = getBalance("1");
-		} else {
-			balance = getBalance("2");
-		}
-		if (balance > Integer.parseInt(amount)) {
-			balanceFlag = "0";
-		} else {
-			balanceFlag = "5";
-			additional_info = "lb";
-		}
-
+		
 		try {
 			String sqlTransactionLog = "INSERT INTO transaction_log (user_id,operator,opType,payee_name,payee_phone,payee_email,amount,trx_id,remarks,additional_info) "
 					+ "VALUES (?,?,?,?,?,?,?,?,?,?)";
@@ -153,8 +139,6 @@ public class UserDBOperations {
 		// LogWriter.LOGGER.info("UserID:"+userId);
 		jsonEncoder.addElement("ErrorCode", errorCode);
 		jsonEncoder.addElement("ErrorMessage", errorMessage);
-		jsonEncoder.addElement("BalanceFlag", balanceFlag);
-		jsonEncoder.addElement("Balance", ""+balance);
 		
 		jsonEncoder.buildJsonObject();
 		// errorCode=jsonEncoder;
