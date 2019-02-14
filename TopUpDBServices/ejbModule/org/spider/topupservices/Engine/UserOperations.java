@@ -50,6 +50,10 @@ public class UserOperations {
 		return new UserDBOperations(weTopUpDS,configurations,logWriter).getSingleTransaction(trx_id).getJsonObject().toString();
 	}
 	
+	public String getAccessKey(String trx_id,String test) {
+		return new UserDBOperations(weTopUpDS,configurations,logWriter).getAccessKey(trx_id,test).getJsonObject().toString();
+	}
+	
 	public String fetchTrxHistory(String userID) {
 		return new UserDBOperations(weTopUpDS,configurations,logWriter).fetchTrxHistory(userID).getJsonObject().toString();
 	}
@@ -170,6 +174,22 @@ public class UserOperations {
 		}
 		if (json.getErrorCode().equals("0")) {
 			retval = fetchSingleTransaction(json.getNString("trx_id"));
+		} else {
+			retval = "E:JSON string invalid";
+		}
+		return retval;
+	}
+	
+	public String fetchAccessKey(String message, String messageBody) {
+		String retval = "E";
+		JsonDecoder json;
+		if (messageBody.isEmpty()) {
+			json = new JsonDecoder(message);
+		} else {
+			json = new JsonDecoder(messageBody);
+		}
+		if (json.getErrorCode().equals("0")) {
+			retval = getAccessKey(json.getNString("trx_id"),json.getNString("test"));
 		} else {
 			retval = "E:JSON string invalid";
 		}

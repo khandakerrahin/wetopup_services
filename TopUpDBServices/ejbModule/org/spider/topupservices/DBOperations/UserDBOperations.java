@@ -364,6 +364,50 @@ public class UserDBOperations {
 		jsonEncoder.buildJsonObject();
 		return jsonEncoder;
 	}
+	
+	public JsonEncoder getAccessKey(String trx_id,String test) {
+		JsonEncoder jsonEncoder = new JsonEncoder();
+		String operator="";
+		String accessKey="";
+		String errorCode = "-1";
+		String errorMessage = "General error.";
+
+		String sql = "SELECT operator FROM transaction_log WHERE trx_id=?";
+
+		try {
+			weTopUpDS.prepareStatement(sql);
+			weTopUpDS.getPreparedStatement().setString(1, trx_id);
+			weTopUpDS.executeQuery();
+			if (weTopUpDS.getResultSet().next()) {
+				operator = weTopUpDS.getResultSet().getString(1);
+			}
+			weTopUpDS.closeResultSet();
+			weTopUpDS.closePreparedStatement();
+			
+			accessKey = fetchAccessKey(operator, test);
+			
+			if(accessKey.equals("")) {
+				errorCode = "5";
+				errorMessage = "fetchAccessKey failed.";
+			}else {
+				errorCode = "0";
+				errorMessage = "fetchAccessKey successful.";
+			}
+		
+		} catch (SQLException e) {
+			e.printStackTrace();
+			errorCode = "11";
+			errorMessage = "SQL Exception.";
+			LogWriter.LOGGER.severe(e.getMessage());
+		}
+
+		jsonEncoder.addElement("ErrorCode", errorCode);
+		jsonEncoder.addElement("ErrorMessage", errorMessage);
+		jsonEncoder.addElement("accessKey", accessKey);
+		
+		jsonEncoder.buildJsonObject();
+		return jsonEncoder;
+	}
 
 	public JsonEncoder fetchTrxHistory(String userID) {
 		JsonEncoder jsonEncoder = new JsonEncoder();

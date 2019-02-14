@@ -129,6 +129,9 @@ public class RequestHandler implements RequestHandlerLocal {
 				case "FETCHSINGLETRANSACTION":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchSingleTransaction(message,messageBody);
 					break;
+				case "FETCHACCESSKEY":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchAccessKey(message,messageBody);
+					break;
 				default:
 					jsonEncoder.addElement("ErrorCode", "-9");
 					jsonEncoder.addElement("ErrorMessage", "Invalid action");
