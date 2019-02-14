@@ -74,12 +74,13 @@ public class UserDBOperations {
 	}
 
 	public JsonEncoder insertTransaction(String user_id, String operator, String opType, String payee_name,
-			String payee_phone, String payee_email, String amount, String trx_id, String remarks) {
+			String payee_phone, String payee_email, String amount, String trx_id, String remarks,String test) {
 		JsonEncoder jsonEncoder = new JsonEncoder();
 
 		String errorCode = "-1";
 		String errorMessage = "General Error";
 		String additional_info = null;
+		String accessKey = "";
 		
 		try {
 			String sqlTransactionLog = "INSERT INTO transaction_log (user_id,operator,opType,payee_name,payee_phone,payee_email,amount,trx_id,remarks,additional_info) "
@@ -106,7 +107,8 @@ public class UserDBOperations {
 				errorCode = "0";
 				errorMessage = "successfully inserted into transaction_log";
 
-				// LogWriter.LOGGER.info("inserted into transaction_log");
+				accessKey = fetchAccessKey(operator,test);
+				LogWriter.LOGGER.info("accessKey : "+accessKey);
 
 			} catch (SQLIntegrityConstraintViolationException de) {
 				errorCode = "1";// : Same name Already exists
@@ -139,6 +141,7 @@ public class UserDBOperations {
 		// LogWriter.LOGGER.info("UserID:"+userId);
 		jsonEncoder.addElement("ErrorCode", errorCode);
 		jsonEncoder.addElement("ErrorMessage", errorMessage);
+		jsonEncoder.addElement("accessKey", accessKey);
 		
 		jsonEncoder.buildJsonObject();
 		// errorCode=jsonEncoder;
@@ -272,6 +275,41 @@ public class UserDBOperations {
 		jsonEncoder.addElement("top_up_status", top_up_status);
 		jsonEncoder.buildJsonObject();
 		return jsonEncoder;
+	}
+	
+	public String fetchAccessKey(String operator, String test) {
+		String accessKey = "";
+		int accessFlag = 1;
+		
+		// Operator:  0=Airtel ; 1=Robi ; 2=GrameenPhone ; 3=Banglalink ; 4=Teletalk
+		
+		if(test.equals("Y")) {
+			
+		}else {
+			if(operator.equals("0") || operator.equals("1")) {
+				accessFlag = 2;
+			}else {
+				accessFlag = 3;
+			}
+		}
+		
+		String sql = "SELECT access_key FROM lebupay_access_key where id = ?";
+
+		try {
+			weTopUpDS.prepareStatement(sql);
+			weTopUpDS.getPreparedStatement().setInt(1, accessFlag);
+			weTopUpDS.executeQuery();
+			if (weTopUpDS.getResultSet().next()) {
+				accessKey = weTopUpDS.getResultSet().getString(1);
+			}
+			weTopUpDS.closeResultSet();
+			weTopUpDS.closePreparedStatement();
+		} catch (SQLException e) {
+			e.printStackTrace();
+			LogWriter.LOGGER.severe(e.getMessage());
+		}
+
+		return accessKey;
 	}
 	
 	public JsonEncoder getSingleTransaction(String trx_id) {

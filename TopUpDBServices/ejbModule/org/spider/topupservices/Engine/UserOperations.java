@@ -30,8 +30,8 @@ public class UserOperations {
 		return new UserDBOperations(weTopUpDS,configurations,logWriter).verifyAppUser(appname, apppass).getJsonObject().toString();
 	}
 	
-	public String insertTrx(String user_id,String operator,String opType,String payee_name,String payee_phone,String payee_email,String amount,String trx_id,String remarks) {
-		return new UserDBOperations(weTopUpDS,configurations,logWriter).insertTransaction(user_id,operator,opType,payee_name,payee_phone,payee_email,amount,trx_id,remarks).getJsonObject().toString();
+	public String insertTrx(String user_id,String operator,String opType,String payee_name,String payee_phone,String payee_email,String amount,String trx_id,String remarks,String test) {
+		return new UserDBOperations(weTopUpDS,configurations,logWriter).insertTransaction(user_id,operator,opType,payee_name,payee_phone,payee_email,amount,trx_id,remarks,test).getJsonObject().toString();
 	}
 	
 	public String updatePaymentMethod(String trx_id, String payment_method) {
@@ -103,7 +103,8 @@ public class UserOperations {
 					json.getNString("payee_email"),
 					json.getNString("amount"),
 					json.getNString("trx_id"),
-					json.getNString("remarks")
+					json.getNString("remarks"),
+					json.getNString("test")
 					);
 		} else {
 			retval = "E:JSON string invalid";
