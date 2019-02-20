@@ -34,6 +34,10 @@ public class UserOperations {
 		return new UserDBOperations(weTopUpDS,configurations,logWriter).insertTransaction(user_id,operator,opType,payee_name,payee_phone,payee_email,amount,trx_id,remarks,pay_method,test).getJsonObject().toString();
 	}
 	
+	public String insertBalTrx(String user_id,String amount,String trx_id,String pay_method,String test) {
+		return new UserDBOperations(weTopUpDS,configurations,logWriter).insertBalanceTransaction(user_id,amount,trx_id,pay_method,test).getJsonObject().toString();
+	}
+	
 	public String sendEmail(String reset,String key,String email,String trx_id) {
 		return new UserDBOperations(weTopUpDS,configurations,logWriter).sendEmail(reset,key,email,trx_id).getJsonObject().toString();
 	}
@@ -44,6 +48,10 @@ public class UserOperations {
 	
 	public String updateStatus(String trx_id, String status) {
 		return new UserDBOperations(weTopUpDS,configurations,logWriter).updateTransactionStatus(trx_id, status).getJsonObject().toString();
+	}
+	
+	public String updateBalanceStatus(String trx_id, String status) {
+		return new UserDBOperations(weTopUpDS,configurations,logWriter).updateBalanceTransactionStatus(trx_id, status).getJsonObject().toString();
 	}
 	
 	public String getStatus(String trx_id) {
@@ -122,6 +130,30 @@ public class UserOperations {
 		return retval;
 	}
 	
+	public String insertBalanceTransaction(String message, String messageBody) {
+		String retval = "E";
+		JsonDecoder json;
+		if (messageBody.isEmpty()) {
+			json = new JsonDecoder(message);
+		} else {
+			json = new JsonDecoder(messageBody);
+		}
+		
+		if (json.getErrorCode().equals("0")) {
+			retval = insertBalTrx(
+				//	NullPointerExceptionHandler.isNullOrEmpty(json.getNString("user_id"))?"":json.getNString("user_id"),
+				json.getNString("user_id"),
+				json.getNString("amount"),
+				json.getNString("trx_id"),
+				json.getNString("pay_method"),
+				json.getNString("test")
+			);
+		} else {
+			retval = "E:JSON string invalid";
+		}
+		return retval;
+	}
+	
 	public String sendEmail(String message, String messageBody) {
 		String retval = "E";
 		JsonDecoder json;
@@ -149,6 +181,22 @@ public class UserOperations {
 		}
 		if (json.getErrorCode().equals("0")) {
 			retval = updateStatus(json.getNString("trx_id"), json.getNString("status"));
+		} else {
+			retval = "E:JSON string invalid";
+		}
+		return retval;
+	}
+	
+	public String updateBalancePaymentStatus(String message, String messageBody) {
+		String retval = "E";
+		JsonDecoder json;
+		if (messageBody.isEmpty()) {
+			json = new JsonDecoder(message);
+		} else {
+			json = new JsonDecoder(messageBody);
+		}
+		if (json.getErrorCode().equals("0")) {
+			retval = updateBalanceStatus(json.getNString("trx_id"), json.getNString("status"));
 		} else {
 			retval = "E:JSON string invalid";
 		}

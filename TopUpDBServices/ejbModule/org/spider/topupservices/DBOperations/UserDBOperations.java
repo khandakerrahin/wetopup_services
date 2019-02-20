@@ -150,6 +150,74 @@ public class UserDBOperations {
 		return jsonEncoder;
 	}
 	
+	public JsonEncoder insertBalanceTransaction(String user_id, String amount, String trx_id, String pay_method, String test) {
+		JsonEncoder jsonEncoder = new JsonEncoder();
+
+		String errorCode = "-1";
+		String errorMessage = "General Error";
+		String additional_info = null;
+		String accessKey = "";
+		String operator = "10";
+		
+		try {
+			String sqlTransactionLog = "INSERT INTO balance_transaction_log (user_id,amount,trx_id,payment_method,additional_info) "
+					+ "VALUES (?,?,?,?,?)";
+
+			try {
+				weTopUpDS.prepareStatement(sqlTransactionLog, true);
+				weTopUpDS.getPreparedStatement().setString(1, user_id);
+				weTopUpDS.getPreparedStatement().setString(2, amount);
+				weTopUpDS.getPreparedStatement().setString(3, trx_id);
+				weTopUpDS.getPreparedStatement().setString(4, pay_method);
+				weTopUpDS.getPreparedStatement().setString(5, additional_info);
+
+				weTopUpDS.execute();
+
+				errorCode = "0";
+				errorMessage = "successfully inserted into transaction_log";
+
+				accessKey = fetchAccessKey(operator,test);
+				LogWriter.LOGGER.info("accessKey : "+accessKey);
+
+			} catch (SQLIntegrityConstraintViolationException de) {
+				errorCode = "1";// : Same name Already exists
+				errorMessage = "SQLIntegrityConstraintViolationExceptions";
+				LogWriter.LOGGER.severe("SQLIntegrityConstraintViolationException:" + de.getMessage());
+			} catch (SQLException e) {
+				errorCode = "11";// :Inserting parameters failed
+				errorMessage = "SQLException";
+				e.printStackTrace();
+				LogWriter.LOGGER.severe("SQLException" + e.getMessage());
+			} catch (Exception e) {
+				e.printStackTrace();
+				errorCode = "10"; // :other Exception
+				errorMessage = "other Exception";
+				e.printStackTrace();
+			}
+		} finally {
+			if (weTopUpDS.getConnection() != null) {
+				try {
+					weTopUpDS.closePreparedStatement();
+					// weTopUpDS.getConnection().close();
+				} catch (SQLException e) {
+					errorCode = "-4"; // :connection close Exception
+					errorMessage = "connection close Exception";
+					e.printStackTrace();
+					LogWriter.LOGGER.severe(e.getMessage());
+				}
+			}
+		}
+		// LogWriter.LOGGER.info("UserID:"+userId);
+		jsonEncoder.addElement("ErrorCode", errorCode);
+		jsonEncoder.addElement("ErrorMessage", errorMessage);
+		jsonEncoder.addElement("accessKey", accessKey);
+		
+		jsonEncoder.buildJsonObject();
+		// errorCode=jsonEncoder;
+
+		return jsonEncoder;
+	}
+	
 	public JsonEncoder sendEmail(String reset,String key,String email,String trx_id) {
 		JsonEncoder jsonEncoder = new JsonEncoder();
 
@@ -349,6 +417,33 @@ public class UserDBOperations {
 		jsonEncoder.buildJsonObject();
 		return jsonEncoder;
 	}
+	
+	public JsonEncoder updateBalanceTransactionStatus(String trx_id, String status) {
+		JsonEncoder jsonEncoder = new JsonEncoder();
+		String errorCode = "-1";
+		String errorMessage = "Update failed.";
+
+		String sql = "UPDATE `balance_transaction_log` SET trx_status =? WHERE trx_id=?";
+
+		try {
+			weTopUpDS.prepareStatement(sql);
+			weTopUpDS.getPreparedStatement().setString(1, status);
+			weTopUpDS.getPreparedStatement().setString(2, trx_id);
+			weTopUpDS.execute();
+			weTopUpDS.closePreparedStatement();
+			errorCode = "0";
+			errorMessage = "Update successful.";
+		} catch (SQLException e) {
+			LogWriter.LOGGER.severe(e.getMessage());
+			errorCode = "11";
+			errorMessage = "SQL Exception";
+		}
+
+		jsonEncoder.addElement("ErrorCode", errorCode);
+		jsonEncoder.addElement("ErrorMessage", errorMessage);
+		jsonEncoder.buildJsonObject();
+		return jsonEncoder;
+	}
 
 	public JsonEncoder updatePaymentMethod(String trx_id, String payment_method) {
 		JsonEncoder jsonEncoder = new JsonEncoder();
@@ -455,6 +550,8 @@ public class UserDBOperations {
 		}else {
 			if(operator.equals("0") || operator.equals("1")) {
 				accessFlag = 2;
+			}else if(operator.equals("10")) {
+				accessFlag = 5;
 			}else {
 				accessFlag = 3;
 			}

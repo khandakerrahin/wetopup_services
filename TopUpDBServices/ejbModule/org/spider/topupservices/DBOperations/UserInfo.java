@@ -53,7 +53,7 @@ public class UserInfo {
 		JsonEncoder jsonEncoder=new JsonEncoder();
 		String errorCode="-1";//default errorCode
 		String errorMessage="default error.";//default errorCode
-		String sql="SELECT u.user_id, u.user_name, case when u.user_email is null then '' else u.user_email end as user_email, u.user_type, u.phone, u.status FROM users_info u where (u.user_email=? or u.phone=?)";
+		String sql="SELECT u.user_id, u.user_name, case when u.user_email is null then '' else u.user_email end as user_email, u.user_type, u.phone, u.status,b.balance,u.distributor_id FROM users_info u left join user_balance b on u.user_id=b.user_id  where (u.user_email='?' or u.phone=?)";
 
 		try {
 			weTopUpDS.prepareStatement(sql);
@@ -69,6 +69,8 @@ public class UserInfo {
 				jsonEncoder.addElement("phoneNumber", rs.getString("phone"));
 				jsonEncoder.addElement("userType", rs.getString("user_type"));
 				jsonEncoder.addElement("status", rs.getString("status"));
+				jsonEncoder.addElement("balance", rs.getString("balance"));
+				jsonEncoder.addElement("distributor_id", rs.getString("distributor_id"));
 				
 				errorCode="0";
 				errorMessage = "fetch successful.";

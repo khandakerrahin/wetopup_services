@@ -129,11 +129,17 @@ public class RequestHandler implements RequestHandlerLocal {
 				case "INSERTTRANSACTION":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).insertTransaction(message,messageBody);
 					break;
+				case "INSERTBALANCETRANSACTION":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).insertBalanceTransaction(message,messageBody);
+					break;
 				case "SETPAYMENTMETHOD":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).setPaymentMethod(message,messageBody);
 					break;
 				case "UPDATEPAYMENTSTATUS":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).updatePaymentStatus(message,messageBody);
+					break;
+				case "UPDATEBALANCEPAYMENTSTATUS":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).updateBalancePaymentStatus(message,messageBody);
 					break;
 				case "FETCHTRANSACTIONHISTORY":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchTransactionHistory(message,messageBody);
