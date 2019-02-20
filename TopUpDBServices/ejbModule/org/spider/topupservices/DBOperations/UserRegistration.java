@@ -39,6 +39,65 @@ public class UserRegistration {
 		}
 		return msisdn;
 	}
+	
+	/**
+	 * 
+	 * @param userId
+	 * @return 0:Successfully Inserted
+	 * 
+	 */
+	public String insertToCustomerBalanceTable(String userId) {
+		String retval= "-1";
+		double balance=0.0;
+		String sql="INSERT INTO user_balance (user_id,balance) VALUES (?, ?)";
+		try {
+			weTopUpDS.prepareStatement(sql,true);
+			weTopUpDS.getPreparedStatement().setString(1, userId);
+			weTopUpDS.getPreparedStatement().setDouble(2, balance);
+
+			retval="0:Successfully Inserted";
+			weTopUpDS.execute();
+		}catch(Exception e) {				
+			e.printStackTrace();
+		}finally {
+			try {
+				weTopUpDS.closePreparedStatement();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}			
+		return retval;		
+	}
+
+	/**
+	 * 
+	 * @param userId
+	 * @return 0:Successfully Inserted
+	 * -1 failed
+	 */
+	public String insertToTblChargingTable(String userId) {
+		String retval= "-1";		
+		String sql="INSERT INTO tbl_charging (user_id) VALUES (?)";
+		try {
+			weTopUpDS.prepareStatement(sql,true);
+			weTopUpDS.getPreparedStatement().setString(1, userId);
+
+			retval="0:Successfully Inserted";
+			weTopUpDS.execute();
+		}catch(Exception e) {				
+			e.printStackTrace();
+		}finally {
+			try {
+				weTopUpDS.closePreparedStatement();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}			
+		return retval;		
+	}
+	
 	/**
 	 * 
 	 * @param jsonDecoder UserName,email,phone,password,custodianName,address,city,postcode
@@ -82,9 +141,20 @@ public class UserRegistration {
 			try{ 
 				weTopUpDS.execute();
 				insertSuccess=true;
-				errorCode = "0";
-				errorMessage = "Successfully registered.";
+				
 				userId=getUserId();
+				if(!userId.equalsIgnoreCase("-1")) { //not -1 means user created successfully
+					insertToCustomerBalanceTable(userId);
+					insertToTblChargingTable(userId);
+
+					errorCode = "0";
+					errorMessage = "Successfully registered.";
+				}else {
+					LogWriter.LOGGER.info("user insert/create failed");
+
+					errorCode = "-1";
+					errorMessage = "failed to register user.";
+				}
 			}catch(SQLIntegrityConstraintViolationException de) {
 				errorCode = "1";
 				errorMessage = "User with the email address or phone number exists.";

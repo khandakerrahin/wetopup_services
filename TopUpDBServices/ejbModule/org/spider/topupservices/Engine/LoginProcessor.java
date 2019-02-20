@@ -62,7 +62,39 @@ public class LoginProcessor {
 			retval="E:JSON string invalid";
 		}
 		if(new JsonDecoder(retval).getJsonObject().getString("ErrorCode").equals("0")) {
-			retval=this.fetchUserInfo(loginCredentials.getJsonObject().getString("username"),loginCredentials.getJsonObject().getString("mode"));
+			retval=this.fetchUserInfo(loginCredentials.getJsonObject().getString("username"));
+		}
+		return retval;
+	}
+	
+	public String fetchUserEmail(String message, String messageBody) {
+		String retval="E";
+		JsonDecoder loginCredentials;
+		if(messageBody.isEmpty()) {
+			loginCredentials=new JsonDecoder(message);
+		}else {
+			loginCredentials=new JsonDecoder(messageBody);
+		}
+		if(loginCredentials.getErrorCode().equals("0")) {
+			retval=this.fetchUserEmail(loginCredentials.getJsonObject().getString("username"));
+		}else{
+			retval="E:JSON string invalid";
+		}
+		return retval;
+	}
+	
+	public String fetchUserByKey(String message, String messageBody) {
+		String retval="E";
+		JsonDecoder loginCredentials;
+		if(messageBody.isEmpty()) {
+			loginCredentials=new JsonDecoder(message);
+		}else {
+			loginCredentials=new JsonDecoder(messageBody);
+		}
+		if(loginCredentials.getErrorCode().equals("0")) {
+			retval=this.fetchUserByKey(loginCredentials.getJsonObject().getString("key"));
+		}else{
+			retval="E:JSON string invalid";
 		}
 		return retval;
 	}
@@ -84,10 +116,60 @@ public class LoginProcessor {
 		return retval;
 	}
 	
+	public String checkUserEntry(String message, String messageBody) {
+		String retval="E";
+		JsonDecoder loginCredentials;
+		if(messageBody.isEmpty()) {
+			loginCredentials=new JsonDecoder(message);
+		}else {
+			loginCredentials=new JsonDecoder(messageBody);
+		}
+		//LoginProcessor loginProcessor=new LoginProcessor();
+		if(loginCredentials.getErrorCode().equals("0")) {
+			retval=this.checkUserEntry(loginCredentials);
+		}else{
+			retval="E:JSON string invalid";
+		}
+		return retval;
+	}
+	
+	public String updateKey(String message, String messageBody) {
+		String retval="E";
+		JsonDecoder loginCredentials;
+		if(messageBody.isEmpty()) {
+			loginCredentials=new JsonDecoder(message);
+		}else {
+			loginCredentials=new JsonDecoder(messageBody);
+		}
+		//LoginProcessor loginProcessor=new LoginProcessor();
+		if(loginCredentials.getErrorCode().equals("0")) {
+			retval=this.updateUserKey(loginCredentials);
+		}else{
+			retval="E:JSON string invalid";
+		}
+		return retval;
+	}
+	
+	public String updatePassword(String message, String messageBody) {
+		String retval="E";
+		JsonDecoder loginCredentials;
+		if(messageBody.isEmpty()) {
+			loginCredentials=new JsonDecoder(message);
+		}else {
+			loginCredentials=new JsonDecoder(messageBody);
+		}
+		//LoginProcessor loginProcessor=new LoginProcessor();
+		if(loginCredentials.getErrorCode().equals("0")) {
+			retval=this.updateUserPassword(loginCredentials);
+		}else{
+			retval="E:JSON string invalid";
+		}
+		return retval;
+	}
+	
 	/**
 	 * 
 	 * @param id
-	 * @param mode 1:email, 2:phone
 	 * @return jsonEncoder userInfo on success
 	 * <br>errorCode 0 indicated success in fetching data
 	 * <br>-1:General Error
@@ -96,9 +178,18 @@ public class LoginProcessor {
 	 * <br>-4:SQLException while closing
 	 * 
 	 */
-	private String fetchUserInfo(String id, String mode) {
-		return new UserInfo(this.weTopUpDS,this.logWriter).fetchUserInfo(id, mode).getJsonObject().toString();
+	private String fetchUserInfo(String id) {
+		return new UserInfo(this.weTopUpDS,this.logWriter).fetchUserInfo(id).getJsonObject().toString();
 	}
+	
+	private String fetchUserEmail(String id) {
+		return new UserInfo(this.weTopUpDS,this.logWriter).fetchUserEmail(id).getJsonObject().toString();
+	}
+	
+	private String fetchUserByKey(String id) {
+		return new UserInfo(this.weTopUpDS,this.logWriter).fetchUserByKey(id).getJsonObject().toString();
+	}
+	
 	/**
 	 * 
 	 * @param loginCredentials
@@ -109,12 +200,35 @@ public class LoginProcessor {
 	 */
 	public String checkCredentials(JsonDecoder loginCredentials){
 		this.logWriter.setUserId(loginCredentials.getJsonObject().getString("username"));
-		return new Login(this.weTopUpDS,this.logWriter).compareCredentialsInDB(loginCredentials.getJsonObject().getString("username"),loginCredentials.getJsonObject().getString("password"),Integer.parseInt(loginCredentials.getJsonObject().getString("mode"))).getJsonObject().toString();
+		return new Login(this.weTopUpDS,this.logWriter).compareCredentialsInDB(loginCredentials.getJsonObject().getString("username"),loginCredentials.getJsonObject().getString("password")).getJsonObject().toString();
+	}
+	
+//	with MODE
+//	public String checkCredentials(JsonDecoder loginCredentials){
+//		this.logWriter.setUserId(loginCredentials.getJsonObject().getString("username"));
+//		return new Login(this.weTopUpDS,this.logWriter).compareCredentialsInDB(loginCredentials.getJsonObject().getString("username"),loginCredentials.getJsonObject().getString("password"),Integer.parseInt(loginCredentials.getJsonObject().getString("mode"))).getJsonObject().toString();
+//	}
+
+	public String checkUserEntry(JsonDecoder loginCredentials){
+		return new Login(this.weTopUpDS,this.logWriter).checkUserInDB(loginCredentials.getJsonObject().getString("email"),loginCredentials.getJsonObject().getString("phone")).getJsonObject().toString();
 	}
 	
 	public String checkUser(JsonDecoder loginCredentials){
-		return new Login(this.weTopUpDS,this.logWriter).checkUserInDB(loginCredentials.getJsonObject().getString("username"),Integer.parseInt(loginCredentials.getJsonObject().getString("mode"))).getJsonObject().toString();
+		return new Login(this.weTopUpDS,this.logWriter).checkUserInDB(loginCredentials.getJsonObject().getString("username")).getJsonObject().toString();
 	}
+	
+	public String updateUserKey(JsonDecoder loginCredentials){
+		return new Login(this.weTopUpDS,this.logWriter).updateUserKey(loginCredentials.getJsonObject().getString("email"),loginCredentials.getJsonObject().getString("key")).getJsonObject().toString();
+	}
+	
+	public String updateUserPassword(JsonDecoder loginCredentials){
+		return new Login(this.weTopUpDS,this.logWriter).updateUserPassword(loginCredentials.getJsonObject().getString("key"),loginCredentials.getJsonObject().getString("password")).getJsonObject().toString();
+	}
+//	public String checkUser(JsonDecoder loginCredentials){
+//		return new Login(this.weTopUpDS,this.logWriter).checkUserInDB(loginCredentials.getJsonObject().getString("username"),Integer.parseInt(loginCredentials.getJsonObject().getString("mode"))).getJsonObject().toString();
+//	}
+	
+	
 	/**
 	 * 
 	 * @param loginCredential

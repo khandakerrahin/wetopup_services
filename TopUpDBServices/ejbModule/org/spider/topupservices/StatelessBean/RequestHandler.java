@@ -111,6 +111,21 @@ public class RequestHandler implements RequestHandlerLocal {
 				case "CHECKUSER":
 					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).checkUser(message,messageBody);
 					break;
+				case "FETCHUSEREMAIL":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).fetchUserEmail(message,messageBody);
+					break;
+				case "CHECKUSERENTRY":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).checkUserEntry(message,messageBody);
+					break;
+				case "UPDATEKEY":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).updateKey(message,messageBody);
+					break;
+				case "UPDATEPASSWORD":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).updatePassword(message,messageBody);
+					break;
+				case "FETCHUSERBYKEY":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).fetchUserByKey(message,messageBody);
+					break;
 				case "INSERTTRANSACTION":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).insertTransaction(message,messageBody);
 					break;
@@ -132,6 +147,10 @@ public class RequestHandler implements RequestHandlerLocal {
 				case "FETCHACCESSKEY":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchAccessKey(message,messageBody);
 					break;
+				case "SENDEMAIL":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).sendEmail(message,messageBody);
+					break;
+					
 				default:
 					jsonEncoder.addElement("ErrorCode", "-9");
 					jsonEncoder.addElement("ErrorMessage", "Invalid action");

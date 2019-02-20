@@ -74,7 +74,7 @@ public class UserDBOperations {
 	}
 
 	public JsonEncoder insertTransaction(String user_id, String operator, String opType, String payee_name,
-			String payee_phone, String payee_email, String amount, String trx_id, String remarks,String test) {
+			String payee_phone, String payee_email, String amount, String trx_id, String remarks,String pay_method, String test) {
 		JsonEncoder jsonEncoder = new JsonEncoder();
 
 		String errorCode = "-1";
@@ -83,8 +83,8 @@ public class UserDBOperations {
 		String accessKey = "";
 		
 		try {
-			String sqlTransactionLog = "INSERT INTO transaction_log (user_id,operator,opType,payee_name,payee_phone,payee_email,amount,trx_id,remarks,additional_info) "
-					+ "VALUES (?,?,?,?,?,?,?,?,?,?)";
+			String sqlTransactionLog = "INSERT INTO transaction_log (user_id,operator,opType,payee_name,payee_phone,payee_email,amount,trx_id,remarks,payment_method,additional_info) "
+					+ "VALUES (?,?,?,?,?,?,?,?,?,?,?)";
 
 			// params
 			// "user_id":"2441139","operator":"Airtel","opType":"0","payee_name":"shaker","payee_phone":"+8801751501178","payee_email":"shaker@spiderdxb.com","amount":"100","trx_id":"TRX2441139","remarks":"this
@@ -100,7 +100,8 @@ public class UserDBOperations {
 				weTopUpDS.getPreparedStatement().setString(7, amount);
 				weTopUpDS.getPreparedStatement().setString(8, trx_id);
 				weTopUpDS.getPreparedStatement().setString(9, remarks);
-				weTopUpDS.getPreparedStatement().setString(10, additional_info);
+				weTopUpDS.getPreparedStatement().setString(10, pay_method);
+				weTopUpDS.getPreparedStatement().setString(11, additional_info);
 
 				weTopUpDS.execute();
 
@@ -148,7 +149,147 @@ public class UserDBOperations {
 
 		return jsonEncoder;
 	}
+	
+	public JsonEncoder sendEmail(String reset,String key,String email,String trx_id) {
+		JsonEncoder jsonEncoder = new JsonEncoder();
 
+		String errorCode = "-1";
+		String errorMessage = "General Error";
+		
+		String app_name = "we_top_up";
+		String subject =  "WeTopUp Recharge Service";
+		String mailbody =  "WeTopUp Reset Password";
+		String amount = "";
+		String operator = "";
+		String opType = "";
+		String payee_phone = "";
+		String time = "";
+		String remarks = "";
+		if(reset.equals("Y")) {
+			subject =  "WeTopUp Reset Password";
+			mailbody =  "Click this link to reset password. <a href='https://we-top-up.com/resetbymail.php?key="+key+"'>Link</a>";
+		}
+		else{
+			JsonDecoder json =  new JsonDecoder(getTransactionStatus(trx_id).getJsonObject().toString());
+			remarks = json.getNString("remarks");
+			amount = json.getNString("amount");
+			payee_phone = json.getNString("payee_phone");
+			operator = getOperatorName(json.getNString("operator"));
+			opType = getOpType(json.getNString("opType"));
+			time = json.getNString("response_time");
+			
+			subject =  "WeTopUp Recharge Service";
+			
+			
+			mailbody = "<b style='font-size: 20px;'> "+remarks+"</b> <br> <br>\n" + 
+					"                <ul style='color:forestgreen'>\n" + 
+					"                <li> <p style='color:green !important'> Recharge Details: BDT "+amount+" recharge in "+operator+" "+payee_phone+" ("+opType+") is successful. </p></li>\n" + 
+					"                <li> <p style='color:black !important'> Date & Time: "+time+" </p></li>\n" + 
+					"                <li> <p style='color:black !important'> Payment: "+amount+" Taka (no extra cost) via Lebupay </p></li>\n" + 
+					"                <li> <p style='color:black !important'> Reference: "+trx_id+" </p></li>\n" + 
+					"\n" + 
+					"                <br>  <br> Thank you for allowing us to serve you <br>www.we-top-up.com <br> <img src='https://www.we-top-up.com/assets/images/icons/favicon-32x32.png' alt='Logo' title='Logo' style='display:block'> <br> <br> <div style='color: #707C80;font-size:10px'> Terms & Conditions:\n" + 
+					"                    <br> 1. This is a Digital Invoice, which shall be treated as Delivery Challan of we-top-up service and does not required any Signature.\n" + 
+					"                    <br> 2. We/SDC shall not accept any type of claims or complaints regarding the service, if the customer fails to contact us within 5 (Five) working days from the invoice date. In that case, it will be assumed that the customer has successfully received and enjoyed the service as per his/her satisfaction.\n" + 
+					"                    <br> 3. Please contact if you have any kind of queries, complaints or claims regarding this Transaction:\n" + 
+					"\n" + 
+					"                        <br> E-mail: support@we-top-up.com\n" + 
+					"                        <br> Tel: +880258157456\n" + 
+					"                        <br> Facebook Messanger: m.me/weTopUp</div>";
+		}
+		
+		
+		String to_address =  email;
+		String from_address = "WeTopUp <support@we-top-up.com>"; 
+		String cc_address =  "";
+		String bcc_address = "";
+		
+		try {
+			String sqlTransactionLog = "INSERT INTO PostalServices.app_email_queues (app_name, subject, mailbody, to_address, from_address, cc_address, bcc_address) values (?, ?, ?, ?, ?, ?, ?)";
+
+			try {
+				weTopUpDS.prepareStatement(sqlTransactionLog, true);
+				weTopUpDS.getPreparedStatement().setString(1, app_name);
+				weTopUpDS.getPreparedStatement().setString(2, subject);
+				weTopUpDS.getPreparedStatement().setString(3, mailbody);
+				weTopUpDS.getPreparedStatement().setString(4, to_address);
+				weTopUpDS.getPreparedStatement().setString(5, from_address);
+				weTopUpDS.getPreparedStatement().setString(6, cc_address);
+				weTopUpDS.getPreparedStatement().setString(7, bcc_address);
+
+				weTopUpDS.execute();
+
+				errorCode = "0";
+				errorMessage = "successfully inserted into app_email_queue";
+
+
+			} catch (SQLIntegrityConstraintViolationException de) {
+				errorCode = "1";// : Same name Already exists
+				errorMessage = "SQLIntegrityConstraintViolationExceptions";
+				LogWriter.LOGGER.severe("SQLIntegrityConstraintViolationException:" + de.getMessage());
+			} catch (SQLException e) {
+				errorCode = "11";// :Inserting parameters failed
+				errorMessage = "SQLException";
+				e.printStackTrace();
+				LogWriter.LOGGER.severe("SQLException" + e.getMessage());
+			} catch (Exception e) {
+				e.printStackTrace();
+				errorCode = "10"; // :other Exception
+				errorMessage = "other Exception";
+				e.printStackTrace();
+			}
+		} finally {
+			if (weTopUpDS.getConnection() != null) {
+				try {
+					weTopUpDS.closePreparedStatement();
+					// weTopUpDS.getConnection().close();
+				} catch (SQLException e) {
+					errorCode = "-4"; // :connection close Exception
+					errorMessage = "connection close Exception";
+					e.printStackTrace();
+					LogWriter.LOGGER.severe(e.getMessage());
+				}
+			}
+		}
+		// LogWriter.LOGGER.info("UserID:"+userId);
+		jsonEncoder.addElement("ErrorCode", errorCode);
+		jsonEncoder.addElement("ErrorMessage", errorMessage);
+		//jsonEncoder.addElement("accessKey", accessKey);
+		
+		jsonEncoder.buildJsonObject();
+		// errorCode=jsonEncoder;
+
+		return jsonEncoder;
+	}
+
+	public String getOperatorName(String opCode){
+		//	0=Airtel ; 1=Robi ; 2=GrameenPhone ; 3=Banglalink ; 4=Teletalk
+		if(opCode.equals("0")){
+			return "Airtel";
+		}else if(opCode.equals("1")){
+			return "Robi";
+		}else if(opCode.equals("2")){
+			return "GrameenPhone";
+		}else if(opCode.equals("3")){
+			return "Banglalink";
+		}else if(opCode.equals("4")){
+			return "Teletalk";
+		}else{
+			return "";
+		}
+	}
+	
+	public String getOpType(String opCode){
+		//	1=Prepaid ; 2=Postpaid
+		if(opCode.equals("1")){
+			return "Prepaid";
+		}else if(opCode.equals("2")){
+			return "Postpaid";
+		}else{
+			return "";
+		}
+	}
+	
 	/**
 	 * Only deletes from users table
 	 * 
@@ -244,10 +385,19 @@ public class UserDBOperations {
 		JsonEncoder jsonEncoder = new JsonEncoder();
 		String trx_status = "-99";
 		String top_up_status = "-99";
+		String user_id = "";
+		String payee_phone = "";
+		String amount = "";
+		String operator = "";	
+		String opType = "";
+		String payee_email = "";
+		String remarks = "";
+		String response_time = "";
+		
 		String errorCode = "-1";
 		String errorMessage = "General error.";
 
-		String sql = "SELECT trx_status, top_up_status FROM `transaction_log` WHERE trx_id=?";
+		String sql = "SELECT trx_status, top_up_status, user_id, payee_phone, amount, operator, opType, payee_email, remarks, response_time FROM `transaction_log` WHERE trx_id=?";
 
 		try {
 			weTopUpDS.prepareStatement(sql);
@@ -256,6 +406,14 @@ public class UserDBOperations {
 			if (weTopUpDS.getResultSet().next()) {
 				trx_status = weTopUpDS.getResultSet().getString(1);
 				top_up_status = weTopUpDS.getResultSet().getString(2);
+				user_id = weTopUpDS.getResultSet().getString(3);
+				payee_phone = weTopUpDS.getResultSet().getString(4);
+				amount = weTopUpDS.getResultSet().getString(5);
+				operator = weTopUpDS.getResultSet().getString(6);	
+				opType = weTopUpDS.getResultSet().getString(7);
+				payee_email = weTopUpDS.getResultSet().getString(8);
+				remarks = weTopUpDS.getResultSet().getString(9);
+				response_time = weTopUpDS.getResultSet().getString(10);
 				errorCode = "0";
 				errorMessage = "getStatus successful.";
 			}
@@ -273,6 +431,15 @@ public class UserDBOperations {
 		jsonEncoder.addElement("trx_id", trx_id);
 		jsonEncoder.addElement("trx_status", trx_status);
 		jsonEncoder.addElement("top_up_status", top_up_status);
+		jsonEncoder.addElement("user_id", user_id);
+		jsonEncoder.addElement("payee_phone", payee_phone);
+		jsonEncoder.addElement("amount", amount);
+		jsonEncoder.addElement("operator", operator);
+		jsonEncoder.addElement("opType", opType);
+		jsonEncoder.addElement("payee_email", payee_email);
+		jsonEncoder.addElement("remarks", remarks);
+		jsonEncoder.addElement("response_time", response_time);
+		
 		jsonEncoder.buildJsonObject();
 		return jsonEncoder;
 	}
@@ -428,7 +595,7 @@ public class UserDBOperations {
 				trx_history += "\"" + weTopUpDS.getResultSet().getString(2) + "\"" + ",";
 				trx_history += "\"" + weTopUpDS.getResultSet().getString(3) + "\"" + ",";
 				trx_history += "\"" + weTopUpDS.getResultSet().getString(4) + "\"" + ",";
-				trx_history += "\"" + weTopUpDS.getResultSet().getString(4) + "\"" + ",";
+				trx_history += "\"" + weTopUpDS.getResultSet().getString(5) + "\"" + ",";
 				trx_history += "\"" + weTopUpDS.getResultSet().getString(6) + "\"" + ",";
 				trx_history += "\"" + weTopUpDS.getResultSet().getString(7) + "\"" + "|";
 			}
