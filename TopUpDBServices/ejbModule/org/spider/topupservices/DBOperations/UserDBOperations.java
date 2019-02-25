@@ -73,141 +73,163 @@ public class UserDBOperations {
 		return jsonEncoder;
 	}
 
-	public JsonEncoder insertTransaction(String user_id, String operator, String opType, String payee_name,
-			String payee_phone, String payee_email, String amount, String trx_id, String remarks,String pay_method, String test) {
-		JsonEncoder jsonEncoder = new JsonEncoder();
-
-		String errorCode = "-1";
-		String errorMessage = "General Error";
-		String additional_info = null;
-		String accessKey = "";
+	public String insertTopUpTransaction(String user_id, String operator, String opType, String payee_name,
+			String payee_phone, String payee_email, String amount, String trx_id, String topup_trx_id, String remarks,String test) {
 		
-		try {
-			String sqlTransactionLog = "INSERT INTO transaction_log (user_id,operator,opType,payee_name,payee_phone,payee_email,amount,trx_id,remarks,payment_method,additional_info) "
-					+ "VALUES (?,?,?,?,?,?,?,?,?,?,?)";
-
-			// params
-			// "user_id":"2441139","operator":"Airtel","opType":"0","payee_name":"shaker","payee_phone":"+8801751501178","payee_email":"shaker@spiderdxb.com","amount":"100","trx_id":"TRX2441139","remarks":"this
-			// is just a test"
+		String errorCode = "-1";
+		String additional_info = null;
+		
+		if(NullPointerExceptionHandler.isNullOrEmpty(user_id) || NullPointerExceptionHandler.isNullOrEmpty(amount) 
+				|| NullPointerExceptionHandler.isNullOrEmpty(trx_id) || NullPointerExceptionHandler.isNullOrEmpty(operator) || NullPointerExceptionHandler.isNullOrEmpty(opType) 
+				|| NullPointerExceptionHandler.isNullOrEmpty(payee_phone) || NullPointerExceptionHandler.isNullOrEmpty(topup_trx_id)) {
+			errorCode = "5";
+		}else {
 			try {
-				weTopUpDS.prepareStatement(sqlTransactionLog, true);
-				weTopUpDS.getPreparedStatement().setString(1, user_id);
-				weTopUpDS.getPreparedStatement().setString(2, operator);
-				weTopUpDS.getPreparedStatement().setString(3, opType);
-				weTopUpDS.getPreparedStatement().setString(4, payee_name);
-				weTopUpDS.getPreparedStatement().setString(5, payee_phone);
-				weTopUpDS.getPreparedStatement().setString(6, payee_email);
-				weTopUpDS.getPreparedStatement().setString(7, amount);
-				weTopUpDS.getPreparedStatement().setString(8, trx_id);
-				weTopUpDS.getPreparedStatement().setString(9, remarks);
-				weTopUpDS.getPreparedStatement().setString(10, pay_method);
-				weTopUpDS.getPreparedStatement().setString(11, additional_info);
+				String sqlTransactionLog = "INSERT INTO topup_log (user_id,operator,opType,payee_name,payee_phone,payee_email,amount,trx_id,topup_trx_id,remarks,additional_info) "
+						+ "VALUES (?,?,?,?,?,?,?,?,?,?,?)";
 
-				weTopUpDS.execute();
-
-				errorCode = "0";
-				errorMessage = "successfully inserted into transaction_log";
-
-				accessKey = fetchAccessKey(operator,test);
-				LogWriter.LOGGER.info("accessKey : "+accessKey);
-
-			} catch (SQLIntegrityConstraintViolationException de) {
-				errorCode = "1";// : Same name Already exists
-				errorMessage = "SQLIntegrityConstraintViolationExceptions";
-				LogWriter.LOGGER.severe("SQLIntegrityConstraintViolationException:" + de.getMessage());
-			} catch (SQLException e) {
-				errorCode = "11";// :Inserting parameters failed
-				errorMessage = "SQLException";
-				e.printStackTrace();
-				LogWriter.LOGGER.severe("SQLException" + e.getMessage());
-			} catch (Exception e) {
-				e.printStackTrace();
-				errorCode = "10"; // :other Exception
-				errorMessage = "other Exception";
-				e.printStackTrace();
-			}
-		} finally {
-			if (weTopUpDS.getConnection() != null) {
+				// params
+				// "user_id":"2441139","operator":"Airtel","opType":"0","payee_name":"shaker","payee_phone":"+8801751501178","payee_email":"shaker@spiderdxb.com","amount":"100","trx_id":"TRX2441139","remarks":"this
+				// is just a test"
 				try {
-					weTopUpDS.closePreparedStatement();
-					// weTopUpDS.getConnection().close();
+					weTopUpDS.prepareStatement(sqlTransactionLog, true);
+					weTopUpDS.getPreparedStatement().setString(1, user_id);
+					weTopUpDS.getPreparedStatement().setString(2, operator);
+					weTopUpDS.getPreparedStatement().setString(3, opType);
+					weTopUpDS.getPreparedStatement().setString(4, payee_name);
+					weTopUpDS.getPreparedStatement().setString(5, payee_phone);
+					weTopUpDS.getPreparedStatement().setString(6, payee_email);
+					weTopUpDS.getPreparedStatement().setString(7, amount);
+					weTopUpDS.getPreparedStatement().setString(8, trx_id);
+					weTopUpDS.getPreparedStatement().setString(9, topup_trx_id);
+					weTopUpDS.getPreparedStatement().setString(10, remarks);
+					weTopUpDS.getPreparedStatement().setString(11, additional_info);
+
+					weTopUpDS.execute();
+
+					errorCode = "0";
+
+				} catch (SQLIntegrityConstraintViolationException de) {
+					errorCode = "1";// : Same name Already exists
+					LogWriter.LOGGER.severe("SQLIntegrityConstraintViolationException:" + de.getMessage());
 				} catch (SQLException e) {
-					errorCode = "-4"; // :connection close Exception
-					errorMessage = "connection close Exception";
+					errorCode = "11";// :Inserting parameters failed
 					e.printStackTrace();
-					LogWriter.LOGGER.severe(e.getMessage());
+					LogWriter.LOGGER.severe("SQLException" + e.getMessage());
+				} catch (Exception e) {
+					e.printStackTrace();
+					errorCode = "10"; // :other Exception
+					e.printStackTrace();
+				}
+			} finally {
+				if (weTopUpDS.getConnection() != null) {
+					try {
+						weTopUpDS.closePreparedStatement();
+						// weTopUpDS.getConnection().close();
+					} catch (SQLException e) {
+						errorCode = "-4"; // :connection close Exception
+						e.printStackTrace();
+						LogWriter.LOGGER.severe(e.getMessage());
+					}
 				}
 			}
-		}
-		// LogWriter.LOGGER.info("UserID:"+userId);
-		jsonEncoder.addElement("ErrorCode", errorCode);
-		jsonEncoder.addElement("ErrorMessage", errorMessage);
-		jsonEncoder.addElement("accessKey", accessKey);
-		
-		jsonEncoder.buildJsonObject();
-		// errorCode=jsonEncoder;
+			// LogWriter.LOGGER.info("UserID:"+userId);
 
-		return jsonEncoder;
+		}
+		
+				
+		return errorCode;
 	}
 	
-	public JsonEncoder insertBalanceTransaction(String user_id, String amount, String trx_id, String pay_method, String test) {
+	public JsonEncoder insertTransaction(String user_id,String amount,String trx_id,String payment_method,String trx_type,String operator,String opType,String payee_name,String payee_phone,String payee_email,String remarks,String test) {
 		JsonEncoder jsonEncoder = new JsonEncoder();
 
 		String errorCode = "-1";
 		String errorMessage = "General Error";
 		String additional_info = null;
 		String accessKey = "";
-		String operator = "10";
+		String topup_trx_id = "";
 		
-		try {
-			String sqlTransactionLog = "INSERT INTO balance_transaction_log (user_id,amount,trx_id,payment_method,additional_info) "
-					+ "VALUES (?,?,?,?,?)";
-
-			try {
-				weTopUpDS.prepareStatement(sqlTransactionLog, true);
-				weTopUpDS.getPreparedStatement().setString(1, user_id);
-				weTopUpDS.getPreparedStatement().setString(2, amount);
-				weTopUpDS.getPreparedStatement().setString(3, trx_id);
-				weTopUpDS.getPreparedStatement().setString(4, pay_method);
-				weTopUpDS.getPreparedStatement().setString(5, additional_info);
-
-				weTopUpDS.execute();
-
-				errorCode = "0";
-				errorMessage = "successfully inserted into transaction_log";
-
-				accessKey = fetchAccessKey(operator,test);
-				LogWriter.LOGGER.info("accessKey : "+accessKey);
-
-			} catch (SQLIntegrityConstraintViolationException de) {
-				errorCode = "1";// : Same name Already exists
-				errorMessage = "SQLIntegrityConstraintViolationExceptions";
-				LogWriter.LOGGER.severe("SQLIntegrityConstraintViolationException:" + de.getMessage());
-			} catch (SQLException e) {
-				errorCode = "11";// :Inserting parameters failed
-				errorMessage = "SQLException";
-				e.printStackTrace();
-				LogWriter.LOGGER.severe("SQLException" + e.getMessage());
-			} catch (Exception e) {
-				e.printStackTrace();
-				errorCode = "10"; // :other Exception
-				errorMessage = "other Exception";
-				e.printStackTrace();
+		if(NullPointerExceptionHandler.isNullOrEmpty(user_id) || NullPointerExceptionHandler.isNullOrEmpty(amount) || NullPointerExceptionHandler.isNullOrEmpty(trx_id) || NullPointerExceptionHandler.isNullOrEmpty(payment_method) || NullPointerExceptionHandler.isNullOrEmpty(trx_type)) {
+			errorCode = "5";
+			errorMessage = "Missing one or more parameters.";
+		}else {
+			if(NullPointerExceptionHandler.isNullOrEmpty(operator)) {
+				operator = "10"; // for balance
 			}
-		} finally {
-			if (weTopUpDS.getConnection() != null) {
+			
+			try {
+				String sqlTransactionLog = "INSERT INTO transaction_log (user_id,amount,trx_id,payment_method,additional_info,trx_type) "
+						+ "VALUES (?,?,?,?,?,?)";
+
 				try {
-					weTopUpDS.closePreparedStatement();
-					// weTopUpDS.getConnection().close();
+					weTopUpDS.prepareStatement(sqlTransactionLog, true);
+					weTopUpDS.getPreparedStatement().setString(1, user_id);
+					weTopUpDS.getPreparedStatement().setString(2, amount);
+					weTopUpDS.getPreparedStatement().setString(3, trx_id);
+					weTopUpDS.getPreparedStatement().setString(4, payment_method);
+					weTopUpDS.getPreparedStatement().setString(5, additional_info);
+					weTopUpDS.getPreparedStatement().setString(6, trx_type);
+
+					weTopUpDS.execute();
+
+					errorCode = "0";
+					errorMessage = "successfully inserted into transaction_log";
+
+					LogWriter.LOGGER.info(errorMessage);
+					
+					if(trx_type.equals("0")) {
+						topup_trx_id = RandomStringGenerator.getRandomString("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",10);
+						errorCode = insertTopUpTransaction(user_id, operator, opType, payee_name,payee_phone, payee_email, amount, trx_id, topup_trx_id, remarks, test);
+						if(errorCode.equals("0")) {
+							errorMessage = "successfully inserted into topup_log";
+							LogWriter.LOGGER.info(errorMessage);
+						}else if(errorCode.equals("5")) {
+							errorMessage = "Missing one or more parameters";
+							LogWriter.LOGGER.info(errorMessage);
+						}else {
+							errorMessage = "failed to insert into topup_log";
+
+							LogWriter.LOGGER.info(errorMessage);
+						}
+					}
+					
+					accessKey = fetchAccessKey(operator,test);
+					
+					LogWriter.LOGGER.info("accessKey : "+accessKey);
+
+				} catch (SQLIntegrityConstraintViolationException de) {
+					errorCode = "1";// : Same name Already exists
+					errorMessage = "SQLIntegrityConstraintViolationExceptions";
+					LogWriter.LOGGER.severe("SQLIntegrityConstraintViolationException:" + de.getMessage());
 				} catch (SQLException e) {
-					errorCode = "-4"; // :connection close Exception
-					errorMessage = "connection close Exception";
+					errorCode = "11";// :Inserting parameters failed
+					errorMessage = "SQLException";
 					e.printStackTrace();
-					LogWriter.LOGGER.severe(e.getMessage());
+					LogWriter.LOGGER.severe("SQLException" + e.getMessage());
+				} catch (Exception e) {
+					e.printStackTrace();
+					errorCode = "10"; // :other Exception
+					errorMessage = "other Exception";
+					e.printStackTrace();
+				}
+			} finally {
+				if (weTopUpDS.getConnection() != null) {
+					try {
+						weTopUpDS.closePreparedStatement();
+						// weTopUpDS.getConnection().close();
+					} catch (SQLException e) {
+						errorCode = "-4"; // :connection close Exception
+						errorMessage = "connection close Exception";
+						e.printStackTrace();
+						LogWriter.LOGGER.severe(e.getMessage());
+					}
 				}
 			}
+			// LogWriter.LOGGER.info("UserID:"+userId);
+
 		}
-		// LogWriter.LOGGER.info("UserID:"+userId);
+		
 		jsonEncoder.addElement("ErrorCode", errorCode);
 		jsonEncoder.addElement("ErrorMessage", errorMessage);
 		jsonEncoder.addElement("accessKey", accessKey);
@@ -391,6 +413,33 @@ public class UserDBOperations {
 		}
 	}
 
+	public JsonEncoder updateTopUpStatus(String trx_id, String status) {
+		JsonEncoder jsonEncoder = new JsonEncoder();
+		String errorCode = "-1";
+		String errorMessage = "Update failed.";
+
+		String sql = "UPDATE `topup_log` SET trx_status =? WHERE trx_id=?";
+
+		try {
+			weTopUpDS.prepareStatement(sql);
+			weTopUpDS.getPreparedStatement().setString(1, status);
+			weTopUpDS.getPreparedStatement().setString(2, trx_id);
+			weTopUpDS.execute();
+			weTopUpDS.closePreparedStatement();
+			errorCode = "0";
+			errorMessage = "Update successful.";
+		} catch (SQLException e) {
+			LogWriter.LOGGER.severe(e.getMessage());
+			errorCode = "11";
+			errorMessage = "SQL Exception";
+		}
+
+		jsonEncoder.addElement("ErrorCode", errorCode);
+		jsonEncoder.addElement("ErrorMessage", errorMessage);
+		jsonEncoder.buildJsonObject();
+		return jsonEncoder;
+	}
+	
 	public JsonEncoder updateTransactionStatus(String trx_id, String status) {
 		JsonEncoder jsonEncoder = new JsonEncoder();
 		String errorCode = "-1";
@@ -418,33 +467,81 @@ public class UserDBOperations {
 		return jsonEncoder;
 	}
 	
-	public JsonEncoder updateBalanceTransactionStatus(String trx_id, String status) {
+	public JsonEncoder updateBalance(String user_id, String amount, String flag) {
 		JsonEncoder jsonEncoder = new JsonEncoder();
 		String errorCode = "-1";
 		String errorMessage = "Update failed.";
+		Double currentBalance = 0.0;
+		
+		if(NullPointerExceptionHandler.isNullOrEmpty(user_id) || NullPointerExceptionHandler.isNullOrEmpty(amount) || NullPointerExceptionHandler.isNullOrEmpty(flag)) {
+			errorCode = "-10";
+			errorMessage = "Missing parameter(s).";
+		}
+		else {
+			try {
+				String sql = "UPDATE `user_balance` SET balance =? WHERE user_id=?";
 
-		String sql = "UPDATE `balance_transaction_log` SET trx_status =? WHERE trx_id=?";
-
-		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, status);
-			weTopUpDS.getPreparedStatement().setString(2, trx_id);
-			weTopUpDS.execute();
-			weTopUpDS.closePreparedStatement();
-			errorCode = "0";
-			errorMessage = "Update successful.";
-		} catch (SQLException e) {
-			LogWriter.LOGGER.severe(e.getMessage());
-			errorCode = "11";
-			errorMessage = "SQL Exception";
+				currentBalance = getCurrentBalance(user_id);
+				if(flag.equals("0")) {	// ADD
+					currentBalance = currentBalance + Double.parseDouble(amount);
+					weTopUpDS.prepareStatement(sql);
+					weTopUpDS.getPreparedStatement().setDouble(1, currentBalance);
+					weTopUpDS.getPreparedStatement().setString(2, user_id);
+					weTopUpDS.execute();
+					weTopUpDS.closePreparedStatement();
+					errorCode = "0";
+					errorMessage = "Update successful.";
+				}else if(flag.equals("1")) {	// SUB
+					currentBalance = currentBalance - Double.parseDouble(amount);
+					weTopUpDS.prepareStatement(sql);
+					weTopUpDS.getPreparedStatement().setDouble(1, currentBalance);
+					weTopUpDS.getPreparedStatement().setString(2, user_id);
+					weTopUpDS.execute();
+					weTopUpDS.closePreparedStatement();
+					errorCode = "0";
+					errorMessage = "Update successful.";
+				}else {
+					errorCode = "2";
+					errorMessage = "Invalid flag.";
+				}
+			} catch (SQLException e) {
+				LogWriter.LOGGER.severe(e.getMessage());
+				errorCode = "11";
+				errorMessage = "SQL Exception";
+			}catch (Exception e) {
+				LogWriter.LOGGER.severe(e.getMessage());
+				errorCode = "-5";
+				errorMessage = "General Exception";
+			}
 		}
 
 		jsonEncoder.addElement("ErrorCode", errorCode);
 		jsonEncoder.addElement("ErrorMessage", errorMessage);
+		jsonEncoder.addElement("balance", ""+currentBalance);
 		jsonEncoder.buildJsonObject();
 		return jsonEncoder;
 	}
 
+	public Double getCurrentBalance(String user_id) {
+		Double balance = 0.0;
+		String sql = "SELECT balance FROM user_balance where user_id=?";
+
+		try {
+			weTopUpDS.prepareStatement(sql);
+			weTopUpDS.getPreparedStatement().setString(1, user_id);
+			weTopUpDS.executeQuery();
+			if (weTopUpDS.getResultSet().next()) {
+				balance = weTopUpDS.getResultSet().getDouble(1);
+			}
+			weTopUpDS.closeResultSet();
+			weTopUpDS.closePreparedStatement();
+		} catch (SQLException e) {
+			e.printStackTrace();
+			LogWriter.LOGGER.severe(e.getMessage());
+		}
+		return balance;
+	}
+	
 	public JsonEncoder updatePaymentMethod(String trx_id, String payment_method) {
 		JsonEncoder jsonEncoder = new JsonEncoder();
 		String errorCode = "-1";
@@ -453,7 +550,7 @@ public class UserDBOperations {
 			errorCode = "5";
 			errorMessage = "can not update for empty trx_id.";
 		} else {
-			String sql = "UPDATE `transaction_log` SET payment_method =? WHERE trx_id=?";
+			String sql = "UPDATE `topup_log` SET payment_method =? WHERE trx_id=?";
 
 			try {
 				weTopUpDS.prepareStatement(sql);
@@ -492,7 +589,7 @@ public class UserDBOperations {
 		String errorCode = "-1";
 		String errorMessage = "General error.";
 
-		String sql = "SELECT trx_status, top_up_status, user_id, payee_phone, amount, operator, opType, payee_email, remarks, response_time FROM `transaction_log` WHERE trx_id=?";
+		String sql = "SELECT trx_status, top_up_status, user_id, payee_phone, amount, operator, opType, payee_email, remarks, response_time FROM `topup_log` WHERE trx_id=?";
 
 		try {
 			weTopUpDS.prepareStatement(sql);
@@ -588,7 +685,7 @@ public class UserDBOperations {
 		String errorCode = "-1";
 		String errorMessage = "General error.";
 
-		String sql = "SELECT user_id, payee_phone, amount, operator, opType, payee_email, remarks FROM transaction_log WHERE trx_id=?";
+		String sql = "SELECT user_id, payee_phone, amount, operator, opType, payee_email, remarks FROM topup_log WHERE trx_id=?";
 
 		try {
 			weTopUpDS.prepareStatement(sql);
@@ -636,7 +733,7 @@ public class UserDBOperations {
 		String errorCode = "-1";
 		String errorMessage = "General error.";
 
-		String sql = "SELECT operator FROM transaction_log WHERE trx_id=?";
+		String sql = "SELECT operator FROM topup_log WHERE trx_id=?";
 
 		try {
 			weTopUpDS.prepareStatement(sql);
@@ -680,7 +777,54 @@ public class UserDBOperations {
 
 		String trx_history = "";
 
-		String sql = "SELECT trx_id, payee_phone, amount, trx_status, top_up_status, insert_time, payment_method FROM `transaction_log` WHERE user_id=?";
+		String sql = "SELECT trx_id, amount, trx_status, insert_time FROM transaction_log where trx_type=? and user_id=? order by insert_time desc";
+
+		try {
+			weTopUpDS.prepareStatement(sql);
+			weTopUpDS.getPreparedStatement().setString(1, "1"); // for balance recharge
+			weTopUpDS.getPreparedStatement().setString(2, userID);
+			weTopUpDS.executeQuery();
+			while (weTopUpDS.getResultSet().next()) {
+				// trx_id,payee_phone,amount,trx_status,top_up_status,insert_time,payment_method
+				trx_history += "\"" + weTopUpDS.getResultSet().getString(1) + "\"" + ",";
+				trx_history += "\"" + weTopUpDS.getResultSet().getString(2) + "\"" + ",";
+				trx_history += "\"" + weTopUpDS.getResultSet().getString(3) + "\"" + ",";
+				trx_history += "\"" + weTopUpDS.getResultSet().getString(4) + "\"" + "|";
+			}
+			int lio = trx_history.lastIndexOf("|");
+			if (lio > 0)
+				trx_history = trx_history.substring(0, lio);
+
+			errorCode = "0";
+			errorMessage = "fetched transaction history successfully.";
+
+			weTopUpDS.closeResultSet();
+			weTopUpDS.closePreparedStatement();
+		} catch (SQLException e) {
+			e.printStackTrace();
+			errorCode = "11";
+			errorMessage = "SQL Exception.";
+			LogWriter.LOGGER.severe(e.getMessage());
+		}
+
+		LogWriter.LOGGER.info("trx_history :"+trx_history);
+		jsonEncoder.addElement("ErrorCode", errorCode);
+		jsonEncoder.addElement("ErrorMessage", errorMessage);
+		jsonEncoder.addElement("userID", userID);
+		jsonEncoder.addElement("trx_history", trx_history);
+
+		jsonEncoder.buildJsonObject();
+		return jsonEncoder;
+	}
+	
+	public JsonEncoder fetchTopUpHistory(String userID) {
+		JsonEncoder jsonEncoder = new JsonEncoder();
+		String errorCode = "-1";
+		String errorMessage = "General error.";
+
+		String trx_history = "";
+
+		String sql = "SELECT a.trx_id, a.payee_phone, a.amount, t.trx_status, a.top_up_status, a.insert_time, t.payment_method FROM topup_log a left join transaction_log t on a.trx_id=t.trx_id WHERE a.user_id=? order by a.insert_time desc";
 
 		try {
 			weTopUpDS.prepareStatement(sql);

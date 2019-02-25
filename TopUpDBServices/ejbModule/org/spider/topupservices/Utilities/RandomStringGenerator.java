@@ -13,7 +13,7 @@ public class RandomStringGenerator {
 
 	/**
 	 * 
-	 * @param characterSet Character set to use. Eg. "1234567890ABEDEFGHIJKLMNOPQRSTUVWXYZ"
+	 * @param characterSet Character set to use. Eg. "1234567890ABCEDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 	 * @param length Length of output random string
 	 * @return a random string of size <b>length<b>
 	 */

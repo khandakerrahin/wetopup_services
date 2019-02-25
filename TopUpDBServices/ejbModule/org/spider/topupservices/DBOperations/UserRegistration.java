@@ -121,7 +121,7 @@ public class UserRegistration {
 		String sqlInsertusers_info="INSERT INTO users_info("
 				+ "user_name,user_email,user_type,status,phone,key_seed,passwd_enc)" 
 				+ "VALUES" 
-				+ "(?,?,'Customer',1,?,?,AES_ENCRYPT(?,concat_ws('',?,?,?,?)))";
+				+ "(?,?,'1',1,?,?,AES_ENCRYPT(?,concat_ws('',?,?,?,?)))";
 
 		String userId="-1";
 		try {
@@ -144,7 +144,7 @@ public class UserRegistration {
 				
 				userId=getUserId();
 				if(!userId.equalsIgnoreCase("-1")) { //not -1 means user created successfully
-					insertToCustomerBalanceTable(userId);
+					//insertToCustomerBalanceTable(userId);
 					insertToTblChargingTable(userId);
 
 					errorCode = "0";
@@ -190,6 +190,9 @@ public class UserRegistration {
 		}
 		jsonEncoder.addElement("ErrorCode", errorCode);
 		jsonEncoder.addElement("ErrorMessage", errorMessage);
+		if(errorCode.equals("0")) {
+			return new UserInfo(this.weTopUpDS,this.logWriter).fetchUserInfo(jsonDecoder.getJsonObject().getString("email"));
+		}
 		jsonEncoder.buildJsonObject();
 		
 		return jsonEncoder;

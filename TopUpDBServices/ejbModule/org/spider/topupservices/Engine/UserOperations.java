@@ -30,12 +30,12 @@ public class UserOperations {
 		return new UserDBOperations(weTopUpDS,configurations,logWriter).verifyAppUser(appname, apppass).getJsonObject().toString();
 	}
 	
-	public String insertTrx(String user_id,String operator,String opType,String payee_name,String payee_phone,String payee_email,String amount,String trx_id,String remarks,String pay_method,String test) {
-		return new UserDBOperations(weTopUpDS,configurations,logWriter).insertTransaction(user_id,operator,opType,payee_name,payee_phone,payee_email,amount,trx_id,remarks,pay_method,test).getJsonObject().toString();
-	}
+//	public String insertTopUpTrx(String user_id,String operator,String opType,String payee_name,String payee_phone,String payee_email,String amount,String trx_id,String remarks,String pay_method,String test) {
+//		return new UserDBOperations(weTopUpDS,configurations,logWriter).insertTopUpTransaction(user_id,operator,opType,payee_name,payee_phone,payee_email,amount,trx_id,remarks,pay_method,test).getJsonObject().toString();
+//	}
 	
-	public String insertBalTrx(String user_id,String amount,String trx_id,String pay_method,String test) {
-		return new UserDBOperations(weTopUpDS,configurations,logWriter).insertBalanceTransaction(user_id,amount,trx_id,pay_method,test).getJsonObject().toString();
+	public String insertTrx(String user_id,String amount,String trx_id,String payment_method,String trx_type,String operator,String opType,String payee_name,String payee_phone,String payee_email,String remarks,String test) {
+		return new UserDBOperations(weTopUpDS,configurations,logWriter).insertTransaction(user_id,amount,trx_id,payment_method,trx_type,operator,opType,payee_name,payee_phone,payee_email,remarks,test).getJsonObject().toString();
 	}
 	
 	public String sendEmail(String reset,String key,String email,String trx_id) {
@@ -47,11 +47,15 @@ public class UserOperations {
 	}
 	
 	public String updateStatus(String trx_id, String status) {
+		return new UserDBOperations(weTopUpDS,configurations,logWriter).updateTopUpStatus(trx_id, status).getJsonObject().toString();
+	}
+	
+	public String updatePayStatus(String trx_id, String status) {
 		return new UserDBOperations(weTopUpDS,configurations,logWriter).updateTransactionStatus(trx_id, status).getJsonObject().toString();
 	}
 	
-	public String updateBalanceStatus(String trx_id, String status) {
-		return new UserDBOperations(weTopUpDS,configurations,logWriter).updateBalanceTransactionStatus(trx_id, status).getJsonObject().toString();
+	public String updateBalance(String user_id, String amount, String flag) {
+		return new UserDBOperations(weTopUpDS,configurations,logWriter).updateBalance(user_id, amount, flag).getJsonObject().toString();
 	}
 	
 	public String getStatus(String trx_id) {
@@ -68,6 +72,10 @@ public class UserOperations {
 	
 	public String fetchTrxHistory(String userID) {
 		return new UserDBOperations(weTopUpDS,configurations,logWriter).fetchTrxHistory(userID).getJsonObject().toString();
+	}
+	
+	public String fetchTopUpHistory(String userID) {
+		return new UserDBOperations(weTopUpDS,configurations,logWriter).fetchTopUpHistory(userID).getJsonObject().toString();
 	}
 	
 	public String getTrxId(String message, String messageBody) {
@@ -100,6 +108,36 @@ public class UserOperations {
 		return retval;
 	}
 	
+//	public String insertTopUpTransaction(String message, String messageBody) {
+//		String retval = "E";
+//		JsonDecoder json;
+//		if (messageBody.isEmpty()) {
+//			json = new JsonDecoder(message);
+//		} else {
+//			json = new JsonDecoder(messageBody);
+//		}
+//		
+//		if (json.getErrorCode().equals("0")) {
+//			retval = insertTopUpTrx(
+//				//	NullPointerExceptionHandler.isNullOrEmpty(json.getNString("user_id"))?"":json.getNString("user_id"),
+//				json.getNString("user_id"),
+//				json.getNString("operator"),
+//				json.getNString("opType"),
+//				json.getNString("payee_name"),
+//				json.getNString("payee_phone"),
+//				json.getNString("payee_email"),
+//				json.getNString("amount"),
+//				json.getNString("trx_id"),
+//				json.getNString("remarks"),
+//				json.getNString("pay_method"),
+//				json.getNString("test")
+//			);
+//		} else {
+//			retval = "E:JSON string invalid";
+//		}
+//		return retval;
+//	}
+	
 	public String insertTransaction(String message, String messageBody) {
 		String retval = "E";
 		JsonDecoder json;
@@ -113,40 +151,19 @@ public class UserOperations {
 			retval = insertTrx(
 				//	NullPointerExceptionHandler.isNullOrEmpty(json.getNString("user_id"))?"":json.getNString("user_id"),
 				json.getNString("user_id"),
+				json.getNString("amount"),
+				json.getNString("trx_id"),
+				json.getNString("payment_method"),
+				json.getNString("trx_type"),
 				json.getNString("operator"),
 				json.getNString("opType"),
 				json.getNString("payee_name"),
 				json.getNString("payee_phone"),
 				json.getNString("payee_email"),
-				json.getNString("amount"),
-				json.getNString("trx_id"),
 				json.getNString("remarks"),
-				json.getNString("pay_method"),
 				json.getNString("test")
-			);
-		} else {
-			retval = "E:JSON string invalid";
-		}
-		return retval;
-	}
-	
-	public String insertBalanceTransaction(String message, String messageBody) {
-		String retval = "E";
-		JsonDecoder json;
-		if (messageBody.isEmpty()) {
-			json = new JsonDecoder(message);
-		} else {
-			json = new JsonDecoder(messageBody);
-		}
-		
-		if (json.getErrorCode().equals("0")) {
-			retval = insertBalTrx(
-				//	NullPointerExceptionHandler.isNullOrEmpty(json.getNString("user_id"))?"":json.getNString("user_id"),
-				json.getNString("user_id"),
-				json.getNString("amount"),
-				json.getNString("trx_id"),
-				json.getNString("pay_method"),
-				json.getNString("test")
+				
+				//	id, user_id, trx_id, amount, trx_status, insert_time, update_time, additional_info, payment_method, card_brand, card_number, bank, bkash_payment_number, billing_name, trx_type
 			);
 		} else {
 			retval = "E:JSON string invalid";
@@ -171,7 +188,7 @@ public class UserOperations {
 		return retval;
 	}
 	
-	public String updatePaymentStatus(String message, String messageBody) {
+	public String updateTopUpStatus(String message, String messageBody) {
 		String retval = "E";
 		JsonDecoder json;
 		if (messageBody.isEmpty()) {
@@ -187,7 +204,7 @@ public class UserOperations {
 		return retval;
 	}
 	
-	public String updateBalancePaymentStatus(String message, String messageBody) {
+	public String updatePaymentStatus(String message, String messageBody) {
 		String retval = "E";
 		JsonDecoder json;
 		if (messageBody.isEmpty()) {
@@ -196,7 +213,23 @@ public class UserOperations {
 			json = new JsonDecoder(messageBody);
 		}
 		if (json.getErrorCode().equals("0")) {
-			retval = updateBalanceStatus(json.getNString("trx_id"), json.getNString("status"));
+			retval = updatePayStatus(json.getNString("trx_id"), json.getNString("status"));
+		} else {
+			retval = "E:JSON string invalid";
+		}
+		return retval;
+	}
+	
+	public String updateBalance(String message, String messageBody) {
+		String retval = "E";
+		JsonDecoder json;
+		if (messageBody.isEmpty()) {
+			json = new JsonDecoder(message);
+		} else {
+			json = new JsonDecoder(messageBody);
+		}
+		if (json.getErrorCode().equals("0")) {
+			retval = updateBalance(json.getNString("user_id"), json.getNString("amount"), json.getNString("flag"));
 		} else {
 			retval = "E:JSON string invalid";
 		}
@@ -277,6 +310,22 @@ public class UserOperations {
 		}
 		if (json.getErrorCode().equals("0")) {
 			retval = fetchTrxHistory(json.getNString("userID"));
+		} else {
+			retval = "E:JSON string invalid";
+		}
+		return retval;
+	}
+	
+	public String fetchTopUpHistory(String message, String messageBody) {
+		String retval = "E";
+		JsonDecoder json;
+		if (messageBody.isEmpty()) {
+			json = new JsonDecoder(message);
+		} else {
+			json = new JsonDecoder(messageBody);
+		}
+		if (json.getErrorCode().equals("0")) {
+			retval = fetchTopUpHistory(json.getNString("userID"));
 		} else {
 			retval = "E:JSON string invalid";
 		}
