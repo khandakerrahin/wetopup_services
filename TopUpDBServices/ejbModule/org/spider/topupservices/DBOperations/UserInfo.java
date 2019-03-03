@@ -177,6 +177,65 @@ public class UserInfo {
 		return jsonEncoder;
 	}
 	
+	public JsonEncoder fetchUserBalance(String user_id) {
+		JsonEncoder jsonEncoder=new JsonEncoder();
+		String errorCode="-1";//default errorCode
+		String errorMessage="default error.";//default errorCode
+		String sql="SELECT user_id, balance FROM users_info where user_id=?";
+
+		try {
+			weTopUpDS.prepareStatement(sql);
+			weTopUpDS.getPreparedStatement().setString(1, user_id);
+			
+			ResultSet rs = weTopUpDS.executeQuery();
+			if (rs.next()) {
+				jsonEncoder.addElement("user_id", rs.getString("user_id"));
+				jsonEncoder.addElement("balance", rs.getString("balance"));
+				
+				errorCode="0";
+				errorMessage = "fetch successful.";
+				this.logWriter.setStatus(1);
+				this.logWriter.appendLog("fu:S");
+			}else {
+				errorCode="-9"; //User details could not be retrieved
+				errorMessage = "balance could not be retrieved.";
+				this.logWriter.setStatus(0);
+				this.logWriter.appendLog("fu:F");
+			}
+			weTopUpDS.closeResultSet();
+			weTopUpDS.closePreparedStatement();
+		}catch(SQLException e){
+			errorCode= "-2";
+			errorMessage = "SQLException.";
+			this.logWriter.setStatus(0);
+			this.logWriter.appendLog("fu:SE");
+			LogWriter.LOGGER.severe(e.getMessage());
+			this.logWriter.appendAdditionalInfo("UserInfo.fetchUserBalance():"+e.getMessage());
+		}catch(Exception e){
+			errorCode= "-3";
+			errorMessage = "General Exception.";
+			this.logWriter.setStatus(0);
+			this.logWriter.appendLog("fu:E");
+			LogWriter.LOGGER.severe(e.getMessage());
+			this.logWriter.appendAdditionalInfo("UserInfo.fetchUserBalance():"+e.getMessage());
+		}
+//		finally{
+//			if(weTopUpDS.getConnection() != null){
+//				try {
+//					weTopUpDS.getConnection().close();
+//				} catch (SQLException e) {
+//					errorCode="-4";
+//					LogWriter.LOGGER.severe(e.getMessage());
+//				}
+//			}      
+//		}
+		jsonEncoder.addElement("ErrorCode", errorCode);
+		jsonEncoder.addElement("ErrorMessage", errorMessage);
+		
+		jsonEncoder.buildJsonObject();
+		return jsonEncoder;
+	}
+	
 	public JsonEncoder fetchUserByKey(String key) {
 		JsonEncoder jsonEncoder=new JsonEncoder();
 		String errorCode="-1";//default errorCode

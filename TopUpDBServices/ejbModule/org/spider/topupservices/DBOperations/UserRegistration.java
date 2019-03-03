@@ -9,6 +9,8 @@ import org.spider.topupservices.Engine.JsonEncoder;
 import org.spider.topupservices.Initializations.Configurations;
 import org.spider.topupservices.Initializations.SecretKey;
 import org.spider.topupservices.Logs.LogWriter;
+import org.spider.topupservices.Utilities.NullPointerExceptionHandler;
+import org.spider.topupservices.Utilities.RandomStringGenerator;
 
 /**
  * @author hafiz
@@ -100,7 +102,7 @@ public class UserRegistration {
 	
 	/**
 	 * 
-	 * @param jsonDecoder UserName,email,phone,password,custodianName,address,city,postcode
+	 * @param jsonDecoder user_name, phone, user_email, user_type, password
 	 * @return 0:Successfully Inserted
 	 * <br>1:User with the email address exists
 	 * <br>2:Inserting organization details failed
@@ -197,6 +199,142 @@ public class UserRegistration {
 		
 		return jsonEncoder;
 	}
+	
+	/**
+	 * 
+	 * @param jsonDecoder user_name, phone, user_email, user_type, password
+	 * @return 0:Successfully Inserted
+	 * <br>1:User with the email address exists
+	 * <br>2:Inserting organization details failed
+	 * <br>11:Inserting user credentials failed
+	 * <br>E:JSON string invalid
+	 * <br>-1:Default Error Code
+	 * <br>-2:SQLException
+	 * <br>-3:General Exception
+	 * <br>-4:SQLException while closing connection
+	 */
+	public JsonEncoder registerNewRetailer(JsonDecoder jsonDecoder) {
+		JsonEncoder jsonEncoder = new JsonEncoder();
+		String errorCode="-1";//default errorCode
+		String errorMessage = "default error message.";
+
+		//user_name, phone, user_email, user_type, password
+		
+		String sqlInsertusers_info="INSERT INTO users_info("
+				+ "user_name,user_email,user_type,status,phone,key_seed,passwd_enc,distributor_id,address)" 
+				+ "VALUES" 
+				+ "(?,?,'5',0,?,?,AES_ENCRYPT(?,concat_ws('',?,?,?,?)),?,?)";
+
+		String userId="-1";
+		String password = RandomStringGenerator.getRandomString("0123456789abcdefghijkl@&mnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",10);
+		LogWriter.LOGGER.info("rpw :"+password);
+		
+		String keySeed = NullPointerExceptionHandler.isNullOrEmpty(jsonDecoder.getJsonObject().getString("email"))?RandomStringGenerator.getRandomString("0123456789abcdefghijkl@.mnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",10):jsonDecoder.getJsonObject().getString("email");
+		
+		try {
+			//json: username,email,phone,password
+			weTopUpDS.prepareStatement(sqlInsertusers_info,true);
+			keySeed = keySeed + this.msisdnNormalize(jsonDecoder.getEString("phone"));
+			weTopUpDS.getPreparedStatement().setString(1, jsonDecoder.getJsonObject().getString("username"));
+			weTopUpDS.getPreparedStatement().setString(2, jsonDecoder.getJsonObject().getString("email"));
+			weTopUpDS.getPreparedStatement().setString(3, this.msisdnNormalize(jsonDecoder.getEString("phone")));
+			weTopUpDS.getPreparedStatement().setString(4, keySeed);//key_seed
+			weTopUpDS.getPreparedStatement().setString(5, password);
+			weTopUpDS.getPreparedStatement().setString(6, SecretKey.SECRETKEY);//key
+			weTopUpDS.getPreparedStatement().setString(7, keySeed);
+			weTopUpDS.getPreparedStatement().setString(8, keySeed);
+			weTopUpDS.getPreparedStatement().setString(9, keySeed);
+			weTopUpDS.getPreparedStatement().setString(10, jsonDecoder.getJsonObject().getString("distributor_id"));
+			weTopUpDS.getPreparedStatement().setString(11, jsonDecoder.getJsonObject().getString("address"));
+			boolean insertSuccess=false;
+			try{ 
+				weTopUpDS.execute();
+				insertSuccess=true;
+				
+				userId=getUserId();
+				if(!userId.equalsIgnoreCase("-1")) { //not -1 means user created successfully
+					//insertToCustomerBalanceTable(userId);
+					insertToTblChargingTable(userId);
+
+					errorCode = "0";
+					errorMessage = "Successfully registered retailer.";
+				}else {
+					LogWriter.LOGGER.info("retailer insert/create failed");
+
+					errorCode = "-1";
+					errorMessage = "failed to register retailer.";
+				}
+			}catch(SQLIntegrityConstraintViolationException de) {
+				errorCode = "1";
+				errorMessage = "User with the email address or phone number exists.";
+				LogWriter.LOGGER.info("SQLIntegrityConstraintViolationException:"+de.getMessage());
+				this.logWriter.setStatus(0);
+				this.logWriter.appendLog("rs:SIVE");
+				this.logWriter.appendAdditionalInfo(errorCode);
+			}catch(SQLException e) {
+				errorCode = "11";
+				errorMessage = "SQLException.";
+				LogWriter.LOGGER.severe("SQLException"+e.getMessage());
+				this.logWriter.setStatus(0);
+				this.logWriter.appendLog("rs:SE");
+				this.logWriter.appendAdditionalInfo("RetailerReg.registerNewRetailer():"+e.getMessage());
+			}
+			LogWriter.LOGGER.info("RetailerID:"+userId);
+			
+		}catch(SQLException e){
+			errorCode= "11";
+			errorMessage = "SQLException.";
+			LogWriter.LOGGER.severe(e.getMessage());
+			this.logWriter.setStatus(0);
+			this.logWriter.appendLog("rs:SE11");
+			this.logWriter.appendAdditionalInfo("RetailerReg.registerNewRetailer():"+e.getMessage());
+		}catch(Exception e){
+			errorCode= "-3";
+			errorMessage = "General Exception.";
+			LogWriter.LOGGER.severe(e.getMessage());
+//			e.printStackTrace();
+			this.logWriter.setStatus(0);
+			this.logWriter.appendLog("rs:E-3");
+			this.logWriter.appendAdditionalInfo("RetailerReg.registerNewRetailer():"+e.getMessage());
+		}
+		jsonEncoder.addElement("ErrorCode", errorCode);
+		jsonEncoder.addElement("ErrorMessage", errorMessage);
+		if(errorCode.equals("0")) {
+			return new UserInfo(this.weTopUpDS,this.logWriter).fetchUserInfo(jsonDecoder.getJsonObject().getString("email"));
+		}
+		jsonEncoder.buildJsonObject();
+		
+		return jsonEncoder;
+	}
+	
+	public JsonEncoder removeRetailer(String user_id, String phone) {
+		JsonEncoder jsonEncoder = new JsonEncoder();
+		String errorCode = "-1";
+		String errorMessage = "Update failed.";
+
+		
+		String sql = "UPDATE `transaction_log` SET trx_status =? and additional_info =? WHERE trx_id=?";
+
+		try {
+			weTopUpDS.prepareStatement(sql);
+			weTopUpDS.getPreparedStatement().setString(1, user_id);
+			weTopUpDS.getPreparedStatement().setString(2, phone);
+			weTopUpDS.execute();
+			weTopUpDS.closePreparedStatement();
+			errorCode = "0";
+			errorMessage = "Update successful.";
+		} catch (SQLException e) {
+			LogWriter.LOGGER.severe(e.getMessage());
+			errorCode = "11";
+			errorMessage = "SQL Exception";
+		}
+
+		jsonEncoder.addElement("ErrorCode", errorCode);
+		jsonEncoder.addElement("ErrorMessage", errorMessage);
+		jsonEncoder.buildJsonObject();
+		return jsonEncoder;
+	}
+	
 	/**
 	 * 
 	 * @return

@@ -108,6 +108,14 @@ public class RequestHandler implements RequestHandlerLocal {
 					this.logWriter.setUserId(NullPointerExceptionHandler.isNullOrEmpty(msg.getString("userId"))?"":msg.getString("userId"));
 					retval=new RegistrationProcessor(dsConn,this.logWriter,this.configurations).processUserRegistration(message,messageBody);
 					break;
+				case "REGISTERRETAILER":
+					this.logWriter.setUserId(NullPointerExceptionHandler.isNullOrEmpty(msg.getString("userId"))?"":msg.getString("userId"));
+					retval=new RegistrationProcessor(dsConn,this.logWriter,this.configurations).processRetailerRegistration(message,messageBody);
+					break;
+				case "REMOVERETAILER":
+					this.logWriter.setUserId(NullPointerExceptionHandler.isNullOrEmpty(msg.getString("userId"))?"":msg.getString("userId"));
+					retval=new RegistrationProcessor(dsConn,this.logWriter,this.configurations).removeRetailer(message,messageBody);
+					break;
 				case "CHECKUSER":
 					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).checkUser(message,messageBody);
 					break;
@@ -123,8 +131,14 @@ public class RequestHandler implements RequestHandlerLocal {
 				case "UPDATEPASSWORD":
 					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).updatePassword(message,messageBody);
 					break;
+				case "CHANGEPASSWORD":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).changePassword(message,messageBody);
+					break;
 				case "FETCHUSERBYKEY":
 					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).fetchUserByKey(message,messageBody);
+					break;
+				case "FETCHUSERBALANCE":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).fetchUserBalance(message,messageBody);
 					break;
 //				case "INSERTTRANSACTION":
 //					retval=new UserOperations(dsConn,this.logWriter,this.configurations).insertTransaction(message,messageBody);
@@ -141,11 +155,11 @@ public class RequestHandler implements RequestHandlerLocal {
 				case "UPDATEPAYMENTSTATUS":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).updatePaymentStatus(message,messageBody);
 					break;
-				case "UPDATEBALANCE":
-					retval=new UserOperations(dsConn,this.logWriter,this.configurations).updateBalance(message,messageBody);
-					break;	
 				case "FETCHTRANSACTIONHISTORY":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchTransactionHistory(message,messageBody);
+					break;
+				case "FETCHRETAILERLIST":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchRetailerList(message,messageBody);
 					break;
 				case "FETCHTOPUPHISTORY":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchTopUpHistory(message,messageBody);
@@ -162,7 +176,9 @@ public class RequestHandler implements RequestHandlerLocal {
 				case "SENDEMAIL":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).sendEmail(message,messageBody);
 					break;
-					
+				case "CANCELTOPUP":
+					retval="cancelled by user.";
+					break;	
 				default:
 					jsonEncoder.addElement("ErrorCode", "-9");
 					jsonEncoder.addElement("ErrorMessage", "Invalid action");

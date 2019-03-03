@@ -368,7 +368,7 @@ public class Login {
 		String errorCode = "-1";
 		String errorMessage = "Update failed.";
 
-		String keySeed = fetchkeySeed(key);
+		String keySeed = fetchkeySeedByKey(key);
 		String sql = "UPDATE users_info t SET t.passwd_enc=AES_ENCRYPT(?,concat_ws('',?,?,?,?)) WHERE t.key=? and t.user_id > 0";
 
 		try {
@@ -437,12 +437,86 @@ public class Login {
 		jsonEncoder.buildJsonObject();
 		return jsonEncoder;
 	}
-	public String fetchkeySeed(String key) {
+	
+	public JsonEncoder changeUserPassword(String credential, String newPassword) {
+		JsonEncoder jsonEncoder = new JsonEncoder();
+		String errorCode = "-1";
+		String errorMessage = "Update failed.";
+
+		credential=this.msisdnNormalize(credential);
+		
+		String keySeed = fetchkeySeedByUser(credential);
+		LogWriter.LOGGER.info("keySeed : "+keySeed);
+		
+		String sql = "UPDATE users_info t SET t.passwd_enc=AES_ENCRYPT(?,concat_ws('',?,?,?,?)) WHERE t.user_email=? or t.phone=?";
+
+		try {
+			weTopUpDS.prepareStatement(sql);
+			weTopUpDS.getPreparedStatement().setString(1, newPassword);
+			weTopUpDS.getPreparedStatement().setString(2, SecretKey.SECRETKEY);//key
+			weTopUpDS.getPreparedStatement().setString(3, keySeed);
+			weTopUpDS.getPreparedStatement().setString(4, keySeed);
+			weTopUpDS.getPreparedStatement().setString(5, keySeed);
+			weTopUpDS.getPreparedStatement().setString(6, credential);
+			weTopUpDS.getPreparedStatement().setString(7, credential);
+			weTopUpDS.execute();
+			weTopUpDS.closePreparedStatement();
+			errorCode = "0";
+			errorMessage = "Update successful.";
+		} catch (SQLException e) {
+			LogWriter.LOGGER.severe(e.getMessage());
+			errorCode = "11";
+			errorMessage = "SQL Exception";
+		}
+
+		jsonEncoder.addElement("ErrorCode", errorCode);
+		jsonEncoder.addElement("ErrorMessage", errorMessage);
+		jsonEncoder.buildJsonObject();
+		return jsonEncoder;
+	}
+	
+	public String fetchkeySeedByKey(String key) {
 		String keySeed = "";
 		String sql="select t.key_seed from users_info t where `key`=?";
 		try {
 			weTopUpDS.prepareStatement(sql);
 			weTopUpDS.getPreparedStatement().setString(1, key);
+			
+			ResultSet rs = weTopUpDS.executeQuery();
+			while (rs.next()) {
+				keySeed = rs.getString(1);
+			}
+			weTopUpDS.closeResultSet();
+			weTopUpDS.closePreparedStatement();
+		}catch(NullPointerException e) {
+			LogWriter.LOGGER.severe(e.getMessage());
+		}
+		catch(Exception e){
+			if(weTopUpDS.getConnection() != null) {
+				try {
+					weTopUpDS.closeResultSet();
+				} catch (SQLException e1) {
+					LogWriter.LOGGER.severe(e1.getMessage());
+				}
+				try {
+					weTopUpDS.closePreparedStatement();
+				} catch (SQLException e1) {
+					LogWriter.LOGGER.severe(e1.getMessage());
+				}
+			}
+			LogWriter.LOGGER.severe(e.getMessage());
+		}
+		
+		return keySeed;
+	}
+	
+	public String fetchkeySeedByUser(String credential) {
+		String keySeed = "";
+		String sql="select t.key_seed from users_info t where t.user_email=? or t.phone=?";
+		try {
+			weTopUpDS.prepareStatement(sql);
+			weTopUpDS.getPreparedStatement().setString(1, credential);
+			weTopUpDS.getPreparedStatement().setString(2, credential);
 			
 			ResultSet rs = weTopUpDS.executeQuery();
 			while (rs.next()) {

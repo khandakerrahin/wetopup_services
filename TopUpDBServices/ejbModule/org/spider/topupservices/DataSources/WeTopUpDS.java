@@ -23,8 +23,8 @@ public class WeTopUpDS {
 		super();
 		try {
 			initialContext = new InitialContext();
-			dataStore = (DataSource)initialContext.lookup( "java:/WeTopUpSandboxDS" );	//	sandbox
-			//	dataStore = (DataSource)initialContext.lookup( "java:/WeTopUpDS" );  // live
+			//	dataStore = (DataSource)initialContext.lookup( "java:/WeTopUpSandboxDS" );	//	sandbox
+			dataStore = (DataSource)initialContext.lookup( "java:/WeTopUpDS" );  // live
 			connection = dataStore.getConnection();
 		}catch(Exception e){
 			System.out.println("Exception thrown " +e);

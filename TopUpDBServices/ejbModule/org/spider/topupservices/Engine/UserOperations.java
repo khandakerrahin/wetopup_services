@@ -34,8 +34,9 @@ public class UserOperations {
 //		return new UserDBOperations(weTopUpDS,configurations,logWriter).insertTopUpTransaction(user_id,operator,opType,payee_name,payee_phone,payee_email,amount,trx_id,remarks,pay_method,test).getJsonObject().toString();
 //	}
 	
-	public String insertTrx(String user_id,String amount,String trx_id,String payment_method,String trx_type,String operator,String opType,String payee_name,String payee_phone,String payee_email,String remarks,String test) {
-		return new UserDBOperations(weTopUpDS,configurations,logWriter).insertTransaction(user_id,amount,trx_id,payment_method,trx_type,operator,opType,payee_name,payee_phone,payee_email,remarks,test).getJsonObject().toString();
+	
+	public String insertTrx(String user_id,String amount,String trx_id,String trx_type,String operator,String opType,String payee_name,String payee_phone,String payee_email,String remarks,String test) {
+		return new UserDBOperations(weTopUpDS,configurations,logWriter).insertTransaction(user_id,amount,trx_id,trx_type,operator,opType,payee_name,payee_phone,payee_email,remarks,test).getJsonObject().toString();
 	}
 	
 	public String sendEmail(String reset,String key,String email,String trx_id) {
@@ -50,16 +51,12 @@ public class UserOperations {
 		return new UserDBOperations(weTopUpDS,configurations,logWriter).updateTopUpStatus(trx_id, status).getJsonObject().toString();
 	}
 	
-	public String updatePayStatus(String trx_id, String status) {
-		return new UserDBOperations(weTopUpDS,configurations,logWriter).updateTransactionStatus(trx_id, status).getJsonObject().toString();
-	}
-	
-	public String updateBalance(String user_id, String amount, String flag) {
-		return new UserDBOperations(weTopUpDS,configurations,logWriter).updateBalance(user_id, amount, flag).getJsonObject().toString();
+	public String updatePayStatus(String trx_id, String status,String additional_info,String trx_type, String LP_trx_status) {
+		return new UserDBOperations(weTopUpDS,configurations,logWriter).updateTransactionStatus(trx_id, status,additional_info,trx_type,LP_trx_status).getJsonObject().toString();
 	}
 	
 	public String getStatus(String trx_id) {
-		return new UserDBOperations(weTopUpDS,configurations,logWriter).getTransactionStatus(trx_id).getJsonObject().toString();
+		return new UserDBOperations(weTopUpDS,configurations,logWriter).getTopUpStatus(trx_id).getJsonObject().toString();
 	}
 	
 	public String fetchSingleTransaction(String trx_id) {
@@ -72,6 +69,10 @@ public class UserOperations {
 	
 	public String fetchTrxHistory(String userID) {
 		return new UserDBOperations(weTopUpDS,configurations,logWriter).fetchTrxHistory(userID).getJsonObject().toString();
+	}
+	
+	public String fetchRetailerList(String userID) {
+		return new UserDBOperations(weTopUpDS,configurations,logWriter).fetchRetailerList(userID).getJsonObject().toString();
 	}
 	
 	public String fetchTopUpHistory(String userID) {
@@ -153,7 +154,7 @@ public class UserOperations {
 				json.getNString("user_id"),
 				json.getNString("amount"),
 				json.getNString("trx_id"),
-				json.getNString("payment_method"),
+				//	json.getNString("payment_method"),
 				json.getNString("trx_type"),
 				json.getNString("operator"),
 				json.getNString("opType"),
@@ -213,23 +214,7 @@ public class UserOperations {
 			json = new JsonDecoder(messageBody);
 		}
 		if (json.getErrorCode().equals("0")) {
-			retval = updatePayStatus(json.getNString("trx_id"), json.getNString("status"));
-		} else {
-			retval = "E:JSON string invalid";
-		}
-		return retval;
-	}
-	
-	public String updateBalance(String message, String messageBody) {
-		String retval = "E";
-		JsonDecoder json;
-		if (messageBody.isEmpty()) {
-			json = new JsonDecoder(message);
-		} else {
-			json = new JsonDecoder(messageBody);
-		}
-		if (json.getErrorCode().equals("0")) {
-			retval = updateBalance(json.getNString("user_id"), json.getNString("amount"), json.getNString("flag"));
+			retval = updatePayStatus(json.getNString("trx_id"), json.getNString("status"), json.getNString("additional_info"),json.getNString("trx_type"),json.getNString("LP_trx_status"));
 		} else {
 			retval = "E:JSON string invalid";
 		}
@@ -310,6 +295,22 @@ public class UserOperations {
 		}
 		if (json.getErrorCode().equals("0")) {
 			retval = fetchTrxHistory(json.getNString("userID"));
+		} else {
+			retval = "E:JSON string invalid";
+		}
+		return retval;
+	}
+	
+	public String fetchRetailerList(String message, String messageBody) {
+		String retval = "E";
+		JsonDecoder json;
+		if (messageBody.isEmpty()) {
+			json = new JsonDecoder(message);
+		} else {
+			json = new JsonDecoder(messageBody);
+		}
+		if (json.getErrorCode().equals("0")) {
+			retval = fetchRetailerList(json.getNString("userID"));
 		} else {
 			retval = "E:JSON string invalid";
 		}

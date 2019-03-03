@@ -62,7 +62,7 @@ public class LoginProcessor {
 			retval="E:JSON string invalid";
 		}
 		if(new JsonDecoder(retval).getJsonObject().getString("ErrorCode").equals("0")) {
-			retval=this.fetchUserInfo(loginCredentials.getJsonObject().getString("username"));
+			retval=this.fetchUserInfo(loginCredentials.getJsonObject().getString("credential"));
 		}
 		return retval;
 	}
@@ -93,6 +93,22 @@ public class LoginProcessor {
 		}
 		if(loginCredentials.getErrorCode().equals("0")) {
 			retval=this.fetchUserByKey(loginCredentials.getJsonObject().getString("key"));
+		}else{
+			retval="E:JSON string invalid";
+		}
+		return retval;
+	}
+	
+	public String fetchUserBalance(String message, String messageBody) {
+		String retval="E";
+		JsonDecoder loginCredentials;
+		if(messageBody.isEmpty()) {
+			loginCredentials=new JsonDecoder(message);
+		}else {
+			loginCredentials=new JsonDecoder(messageBody);
+		}
+		if(loginCredentials.getErrorCode().equals("0")) {
+			retval=this.fetchUserBalance(loginCredentials.getJsonObject().getString("userID"));
 		}else{
 			retval="E:JSON string invalid";
 		}
@@ -167,6 +183,26 @@ public class LoginProcessor {
 		return retval;
 	}
 	
+	public String changePassword(String message, String messageBody) {
+		String retval="E";
+		JsonDecoder loginCredentials;
+		if(messageBody.isEmpty()) {
+			loginCredentials=new JsonDecoder(message);
+		}else {
+			loginCredentials=new JsonDecoder(messageBody);
+		}
+
+		if(loginCredentials.getErrorCode().equals("0")) {
+			retval=this.checkCredentials(loginCredentials);
+		}else{
+			retval="E:JSON string invalid";
+		}
+		if(new JsonDecoder(retval).getJsonObject().getString("ErrorCode").equals("0")) {
+			retval=this.changeUserPassword(loginCredentials);
+		}
+		return retval;
+	}
+	
 	/**
 	 * 
 	 * @param id
@@ -190,6 +226,10 @@ public class LoginProcessor {
 		return new UserInfo(this.weTopUpDS,this.logWriter).fetchUserByKey(id).getJsonObject().toString();
 	}
 	
+	private String fetchUserBalance(String id) {
+		return new UserInfo(this.weTopUpDS,this.logWriter).fetchUserBalance(id).getJsonObject().toString();
+	}
+	
 	/**
 	 * 
 	 * @param loginCredentials
@@ -199,8 +239,8 @@ public class LoginProcessor {
 	 * -2:General Error at compareCredentialsInDB()
 	 */
 	public String checkCredentials(JsonDecoder loginCredentials){
-		this.logWriter.setUserId(loginCredentials.getJsonObject().getString("username"));
-		return new Login(this.weTopUpDS,this.logWriter).compareCredentialsInDB(loginCredentials.getJsonObject().getString("username"),loginCredentials.getJsonObject().getString("password")).getJsonObject().toString();
+		this.logWriter.setUserId(loginCredentials.getJsonObject().getString("credential"));
+		return new Login(this.weTopUpDS,this.logWriter).compareCredentialsInDB(loginCredentials.getJsonObject().getString("credential"),loginCredentials.getJsonObject().getString("password")).getJsonObject().toString();
 	}
 	
 //	with MODE
@@ -224,6 +264,11 @@ public class LoginProcessor {
 	public String updateUserPassword(JsonDecoder loginCredentials){
 		return new Login(this.weTopUpDS,this.logWriter).updateUserPassword(loginCredentials.getJsonObject().getString("key"),loginCredentials.getJsonObject().getString("password")).getJsonObject().toString();
 	}
+	
+	public String changeUserPassword(JsonDecoder loginCredentials){
+		return new Login(this.weTopUpDS,this.logWriter).changeUserPassword(loginCredentials.getJsonObject().getString("credential"),loginCredentials.getJsonObject().getString("newPassword")).getJsonObject().toString();
+	}
+	
 //	public String checkUser(JsonDecoder loginCredentials){
 //		return new Login(this.weTopUpDS,this.logWriter).checkUserInDB(loginCredentials.getJsonObject().getString("username"),Integer.parseInt(loginCredentials.getJsonObject().getString("mode"))).getJsonObject().toString();
 //	}
