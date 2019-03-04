@@ -525,7 +525,14 @@ public class UserDBOperations {
 		String remarks = "";
 		if(reset.equals("Y")) {
 			subject =  "WeTopUp Reset Password";
-			mailbody =  "Click this link to reset password. <a href='https://we-top-up.com/resetbymail.php?key="+key+"'>Link</a>";
+			mailbody =  "<p style='font-size: 16px;'>Your password reset request has been accepted. <br> Click this link to reset password. <a href='https://we-top-up.com/resetbymail.php?key="+key+"'>Link</a></p>"
+					+ "<br>  <br> Thank you for allowing us to serve you <br>www.we-top-up.com <br> <img src='https://www.we-top-up.com/assets/images/icons/favicon-32x32.png' alt='Logo' title='Logo' style='display:block'> <br> <br> <div style='color: #707C80;font-size:10px'> Terms & Conditions:" + 
+					"					                    <br> 1. This is a Digital Invoice, which shall be treated as Delivery Challan of we-top-up service and does not required any Signature." + 
+					"			                    <br> 2. We/SDC shall not accept any type of claims or complaints regarding the service, if the customer fails to contact us within 5 (Five) working days from the invoice date. In that case, it will be assumed that the customer has successfully received and enjoyed the service as per his/her satisfaction." + 
+					"					                    <br> 3. Please contact if you have any kind of queries, complaints or claims regarding this Transaction:" + 
+					"					                        <br> E-mail: support@we-top-up.com" + 
+					"					                        <br> Tel: +880258157456" + 
+					"					                        <br> Facebook Messanger: m.me/weTopUp</div>";
 		}
 		else{
 			JsonDecoder json =  new JsonDecoder(getTopUpStatus(trx_id).getJsonObject().toString());
