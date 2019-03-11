@@ -9,6 +9,8 @@ import org.spider.topupservices.Engine.JsonEncoder;
 import org.spider.topupservices.Initializations.Configurations;
 import org.spider.topupservices.Initializations.SecretKey;
 import org.spider.topupservices.Logs.LogWriter;
+import org.spider.topupservices.DBOperations.UserDBOperations;
+
 import org.spider.topupservices.Utilities.NullPointerExceptionHandler;
 import org.spider.topupservices.Utilities.RandomStringGenerator;
 
@@ -78,6 +80,35 @@ public class UserRegistration {
 	 * @return 0:Successfully Inserted
 	 * -1 failed
 	 */
+	public String insertToTblChargingTable(String userId,String rate) {
+		String retval= "-1";		
+		String sql="INSERT INTO tbl_charging (user_id,regular_charge) VALUES (?,?)";
+		try {
+			weTopUpDS.prepareStatement(sql,true);
+			weTopUpDS.getPreparedStatement().setString(1, userId);
+			weTopUpDS.getPreparedStatement().setString(2, rate);
+			
+			retval="0:Successfully Inserted";
+			weTopUpDS.execute();
+		}catch(Exception e) {				
+			e.printStackTrace();
+		}finally {
+			try {
+				weTopUpDS.closePreparedStatement();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}			
+		return retval;		
+	}
+	
+	/**
+	 * 
+	 * @param userId
+	 * @return 0:Successfully Inserted
+	 * -1 failed
+	 */
 	public String insertToTblChargingTable(String userId) {
 		String retval= "-1";		
 		String sql="INSERT INTO tbl_charging (user_id) VALUES (?)";
@@ -117,7 +148,8 @@ public class UserRegistration {
 		JsonEncoder jsonEncoder = new JsonEncoder();
 		String errorCode="-1";//default errorCode
 		String errorMessage = "default error message.";
-
+		String email = jsonDecoder.getJsonObject().getString("email");
+		String phone = this.msisdnNormalize(jsonDecoder.getEString("phone"));
 		//user_name, phone, user_email, user_type, password
 		
 		String sqlInsertusers_info="INSERT INTO users_info("
@@ -131,8 +163,8 @@ public class UserRegistration {
 			weTopUpDS.prepareStatement(sqlInsertusers_info,true);
 			String keySeed=jsonDecoder.getJsonObject().getString("email")+this.msisdnNormalize(jsonDecoder.getEString("phone"));
 			weTopUpDS.getPreparedStatement().setString(1, jsonDecoder.getJsonObject().getString("username"));
-			weTopUpDS.getPreparedStatement().setString(2, jsonDecoder.getJsonObject().getString("email"));
-			weTopUpDS.getPreparedStatement().setString(3, this.msisdnNormalize(jsonDecoder.getEString("phone")));
+			weTopUpDS.getPreparedStatement().setString(2, email);
+			weTopUpDS.getPreparedStatement().setString(3, phone);
 			weTopUpDS.getPreparedStatement().setString(4, keySeed);//key_seed
 			weTopUpDS.getPreparedStatement().setString(5, jsonDecoder.getJsonObject().getString("password"));//AES encrypt password
 			weTopUpDS.getPreparedStatement().setString(6, SecretKey.SECRETKEY);//key
@@ -151,6 +183,15 @@ public class UserRegistration {
 
 					errorCode = "0";
 					errorMessage = "Successfully registered.";
+					
+					try {
+//						send email
+						new UserDBOperations(weTopUpDS,configurations,logWriter).sendEmail("registrationSuccess", phone, email, null);
+					}catch(Exception e) {
+						e.printStackTrace();
+					}
+					
+					
 				}else {
 					LogWriter.LOGGER.info("user insert/create failed");
 
@@ -217,21 +258,20 @@ public class UserRegistration {
 		JsonEncoder jsonEncoder = new JsonEncoder();
 		String errorCode="-1";//default errorCode
 		String errorMessage = "default error message.";
-
+		
 		//user_name, phone, user_email, user_type, password
 		
 		String sqlInsertusers_info="INSERT INTO users_info("
-				+ "user_name,user_email,user_type,status,phone,key_seed,passwd_enc,distributor_id,address)" 
+				+ "user_name,user_email,user_type,status,phone,key_seed,passwd_enc,distributor_id,address,dp_img,doc_img_01,doc_img_02,doc_img_03)" 
 				+ "VALUES" 
-				+ "(?,?,'5',0,?,?,AES_ENCRYPT(?,concat_ws('',?,?,?,?)),?,?)";
+				+ "(?,?,'5',1,?,?,AES_ENCRYPT(?,concat_ws('',?,?,?,?)),?,?,?,?,?,?)";
 
 		String userId="-1";
-		String password = RandomStringGenerator.getRandomString("0123456789abcdefghijkl@&mnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",10);
-		LogWriter.LOGGER.info("rpw :"+password);
 		
 		String keySeed = NullPointerExceptionHandler.isNullOrEmpty(jsonDecoder.getJsonObject().getString("email"))?RandomStringGenerator.getRandomString("0123456789abcdefghijkl@.mnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",10):jsonDecoder.getJsonObject().getString("email");
 		
 		try {
+			String rate = jsonDecoder.getJsonObject().getString("rate");
 			//json: username,email,phone,password
 			weTopUpDS.prepareStatement(sqlInsertusers_info,true);
 			keySeed = keySeed + this.msisdnNormalize(jsonDecoder.getEString("phone"));
@@ -239,13 +279,17 @@ public class UserRegistration {
 			weTopUpDS.getPreparedStatement().setString(2, jsonDecoder.getJsonObject().getString("email"));
 			weTopUpDS.getPreparedStatement().setString(3, this.msisdnNormalize(jsonDecoder.getEString("phone")));
 			weTopUpDS.getPreparedStatement().setString(4, keySeed);//key_seed
-			weTopUpDS.getPreparedStatement().setString(5, password);
+			weTopUpDS.getPreparedStatement().setString(5, jsonDecoder.getJsonObject().getString("password"));
 			weTopUpDS.getPreparedStatement().setString(6, SecretKey.SECRETKEY);//key
 			weTopUpDS.getPreparedStatement().setString(7, keySeed);
 			weTopUpDS.getPreparedStatement().setString(8, keySeed);
 			weTopUpDS.getPreparedStatement().setString(9, keySeed);
 			weTopUpDS.getPreparedStatement().setString(10, jsonDecoder.getJsonObject().getString("distributor_id"));
 			weTopUpDS.getPreparedStatement().setString(11, jsonDecoder.getJsonObject().getString("address"));
+			weTopUpDS.getPreparedStatement().setString(12, jsonDecoder.getJsonObject().getString("dp_img"));
+			weTopUpDS.getPreparedStatement().setString(13, jsonDecoder.getJsonObject().getString("doc_img_01"));
+			weTopUpDS.getPreparedStatement().setString(14, jsonDecoder.getJsonObject().getString("doc_img_02"));
+			weTopUpDS.getPreparedStatement().setString(15, jsonDecoder.getJsonObject().getString("doc_img_03"));
 			boolean insertSuccess=false;
 			try{ 
 				weTopUpDS.execute();
@@ -254,7 +298,7 @@ public class UserRegistration {
 				userId=getUserId();
 				if(!userId.equalsIgnoreCase("-1")) { //not -1 means user created successfully
 					//insertToCustomerBalanceTable(userId);
-					insertToTblChargingTable(userId);
+					insertToTblChargingTable(userId,rate);
 
 					errorCode = "0";
 					errorMessage = "Successfully registered retailer.";
