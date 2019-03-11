@@ -1531,8 +1531,6 @@ public class UserDBOperations {
 		String retailer_list = "";
 
 		String sql = "SELECT u.user_name,u.phone,u.user_email,u.address,t.regular_charge,date_format(u.created_at, '%Y-%m-%d %H:%i:%S'),u.balance,u.dp_img,u.doc_img_01,u.doc_img_02,u.doc_img_03 FROM users_info u left join tbl_charging t on u.user_id=t.user_id where distributor_id=? order by u.created_at desc";
-
-		
 		
 		try {
 			weTopUpDS.prepareStatement(sql);
@@ -1829,8 +1827,9 @@ public class UserDBOperations {
 
 	public boolean transferUserBalance(String payee_phone, Double amount) {
 		boolean flag = false;
-		String sql = "UPDATE users_info SET balance = FORMAT((balance + ?),2) WHERE phone=?";
-
+		//	String sql = "UPDATE users_info SET balance = FORMAT((balance + ?),2) WHERE phone=?";
+		String sql = "UPDATE users_info SET balance =  round((balance + ?),6) WHERE phone=?";
+		
 		try {
 			weTopUpDS.prepareStatement(sql);
 			weTopUpDS.getPreparedStatement().setDouble(1, amount);
@@ -1849,7 +1848,7 @@ public class UserDBOperations {
 
 	public boolean deductUserBalance(String user_id, Double amount) {
 		boolean flag = false;
-		String sql = "UPDATE users_info SET balance = balance - ? WHERE user_id = ?";
+		String sql = "UPDATE users_info SET balance = round((balance - ?),6) WHERE user_id = ?";
 
 		try {
 			weTopUpDS.prepareStatement(sql);
@@ -1869,7 +1868,7 @@ public class UserDBOperations {
 
 	public boolean rechargeUserBalance(String user_id, Double amount) {
 		boolean flag = false;
-		String sql = "UPDATE users_info SET balance = balance + ? WHERE user_id = ?";
+		String sql = "UPDATE users_info SET balance = round((balance + ?),6) WHERE user_id = ?";
 
 		try {
 			weTopUpDS.prepareStatement(sql);
