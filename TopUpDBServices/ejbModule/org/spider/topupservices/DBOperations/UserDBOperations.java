@@ -334,7 +334,7 @@ public class UserDBOperations {
 							operatorBalance = getBalance("3");
 						}
 
-						if (operatorBalance > Integer.parseInt(amount)) {
+						if (operatorBalance >= Integer.parseInt(amount)) {
 							opBalanceFlag = "0";
 						} else {
 							opBalanceFlag = "5";
@@ -345,7 +345,7 @@ public class UserDBOperations {
 
 						LogWriter.LOGGER.info("operatorBalance : " + operatorBalance);
 
-						if (userBalance < Double.parseDouble(amount)) {
+						if (userBalance <= Double.parseDouble(amount)) {
 							userBalanceFlag = "5";
 							additional_info = (NullPointerExceptionHandler.isNullOrEmpty(additional_info) ? ""
 									: (additional_info + " | ")) + "Insufficient user balance.";
