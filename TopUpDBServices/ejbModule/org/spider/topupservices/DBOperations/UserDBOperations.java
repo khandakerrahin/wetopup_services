@@ -172,8 +172,8 @@ public class UserDBOperations {
 			LogWriter.LOGGER.info("payment_method : " + payment_method);
 
 			try {
-				String sqlTransactionLog = "INSERT INTO transaction_log (user_id,amount,trx_id,payment_method,additional_info,trx_type,receiver_phone) "
-						+ "VALUES (?,?,?,?,?,?,?)";
+				String sqlTransactionLog = "INSERT INTO transaction_log (user_id,amount,trx_id,payment_method,additional_info,trx_type,receiver_phone,retry_profile) "
+						+ "select ?,?,?,?,?,?,?,u.retry_profile from users_info u where u.user_id=?";
 
 				try {
 					weTopUpDS.prepareStatement(sqlTransactionLog, true);
@@ -184,6 +184,7 @@ public class UserDBOperations {
 					weTopUpDS.getPreparedStatement().setString(5, additional_info);
 					weTopUpDS.getPreparedStatement().setString(6, trx_type);
 					weTopUpDS.getPreparedStatement().setString(7, payee_phone);
+					weTopUpDS.getPreparedStatement().setString(8, user_id);
 
 					weTopUpDS.execute();
 
@@ -252,7 +253,7 @@ public class UserDBOperations {
 								if (deductFlag) {
 									userBalance = getUserBalance(user_id);
 									additional_info = (NullPointerExceptionHandler.isNullOrEmpty(additional_info) ? ""
-											: (additional_info + " | ")) + "Balance deducted. | Distributor Updated Balance: "+userBalance;
+											: (additional_info + " | ")) + "Distributor Updated Balance: "+userBalance;
 									JsonDecoder json = new JsonDecoder(
 											updateTransactionStatus(trx_id, "2", additional_info, trx_type, null, null)
 													.getJsonObject().toString());
@@ -443,9 +444,10 @@ public class UserDBOperations {
 						}
 
 						topup_trx_id = RandomStringGenerator.getRandomString("0123456789", 2);
-						topup_trx_id = topup_trx_id + RandomStringGenerator.getRandomString("abcdefghijklmnopqrstuvwxyz", 4);
-						topup_trx_id = topup_trx_id + RandomStringGenerator.getRandomString("0123456789abcdefghABCDEFGHIJKLMNOPQRSTUVWXYZijklmnopqrstuvwxyz", 7);
-						topup_trx_id = topup_trx_id + RandomStringGenerator.getRandomString("ABCDEFGHIJKLMNOPQRSTUVWXYZ", 2);
+						//	topup_trx_id = topup_trx_id + RandomStringGenerator.getRandomString("abcdefghijklmnopqrstuvwxyz", 4);
+						topup_trx_id = topup_trx_id + RandomStringGenerator.getRandomString("0123456789abcdefghABCDEFGHIJKLMNOPQRSTUVWXYZijklmnopqrstuvwxyz", 11);
+						topup_trx_id = topup_trx_id + RandomStringGenerator.getRandomString("ABCDEFGHIJKLMNOPQRSTUVWXYZ", 2) + "00";
+						
 						
 						topUpErrorCode = insertTopUpTransaction(user_id, operator, opType, payee_name, payee_phone,
 								payee_email, amount, trx_id, topup_trx_id, remarks, test, additional_info);
@@ -1593,16 +1595,18 @@ public class UserDBOperations {
 		}else {
 			if(userType.equals("5")) {
 				mode = msisdnNormalize(phone);
-				sql = "SELECT trx_id, amount, trx_status, LP_trx_status, trx_type, insert_time, user_id FROM transaction_log where trx_type in (?,?) and receiver_phone=? order by insert_time desc";
+				sql = "SELECT trx_id, amount, trx_status, LP_trx_status, trx_type, date_format(insert_time, '%Y-%m-%d %H:%i:%S'), user_id, payment_method, ref_trx_id FROM transaction_log where trx_type in (?,?,?,?) and receiver_phone=? order by insert_time desc";
 			}else {
 				mode = userID;
-				sql = "SELECT trx_id, amount, trx_status, LP_trx_status, trx_type, insert_time, receiver_phone  FROM transaction_log where trx_type in (?,?) and user_id=? order by insert_time desc";
+				sql = "SELECT trx_id, amount, trx_status, LP_trx_status, trx_type, date_format(insert_time, '%Y-%m-%d %H:%i:%S'), receiver_phone, payment_method, ref_trx_id  FROM transaction_log where trx_type in (?,?,?,?) and user_id=? order by insert_time desc";
 			}
 			try {
 				weTopUpDS.prepareStatement(sql);
-				weTopUpDS.getPreparedStatement().setString(1, "1"); // for balance recharge
-				weTopUpDS.getPreparedStatement().setString(2, "2"); // for balance transfer
-				weTopUpDS.getPreparedStatement().setString(3, mode);
+				weTopUpDS.getPreparedStatement().setString(1, "0"); // for balance deduct
+				weTopUpDS.getPreparedStatement().setString(2, "1"); // for balance recharge
+				weTopUpDS.getPreparedStatement().setString(3, "2"); // for balance transfer
+				weTopUpDS.getPreparedStatement().setString(4, "3"); // for balance refund
+				weTopUpDS.getPreparedStatement().setString(5, mode);
 				weTopUpDS.executeQuery();
 				ResultSet rs = weTopUpDS.getResultSet();
 				while (rs.next()) {
@@ -1614,11 +1618,12 @@ public class UserDBOperations {
 					trx_history += "\"" + rs.getString(5) + "\"" + ",";
 					trx_history += "\"" + rs.getString(6) + "\"" + ",";
 					if(userType.equals("5")) {
-						trx_history += "\"" + getUserNameByID(rs.getString(7)) + "\"" + "|";
+						trx_history += "\"" + getUserNameByID(rs.getString(7)) + "\"" + ",";
 					}else {
-						trx_history += "\"" + getUserNameByPhone(rs.getString(7)) + "\"" + "|";
+						trx_history += "\"" + getUserNameByPhone(rs.getString(7)) + "\"" + ",";
 					}
-					
+					trx_history += "\"" + rs.getString(8) + "\"" + ",";
+					trx_history += "\"" + rs.getString(9) + "\"" + "|";
 					
 				}
 				int lio = trx_history.lastIndexOf("|");
@@ -1658,7 +1663,7 @@ public class UserDBOperations {
 
 		String trx_history = "";
 
-		String sql = "SELECT a.trx_id, a.payee_phone, a.amount, t.trx_status, t.LP_trx_status, a.top_up_status, a.insert_time, t.payment_method FROM topup_log a left join transaction_log t on a.trx_id=t.trx_id WHERE a.user_id=? order by a.insert_time desc";
+		String sql = "SELECT a.trx_id, a.payee_phone, a.amount, t.trx_status, t.LP_trx_status, a.top_up_status, date_format(a.insert_time, '%Y-%m-%d %H:%i:%S'), t.payment_method FROM topup_log a left join transaction_log t on a.trx_id=t.trx_id WHERE a.user_id=? order by a.insert_time desc";
 
 		try {
 			weTopUpDS.prepareStatement(sql);
