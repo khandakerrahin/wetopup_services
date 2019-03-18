@@ -331,6 +331,8 @@ public class UserDBOperations {
 							operatorBalance = getBalance("1");
 						} else if (operator.equals("1")) {
 							operatorBalance = getBalance("2");
+						} else if(operator.equals("3")) {
+							operatorBalance = getBalance("4");
 						} else {
 							operatorBalance = getBalance("3");
 						}
@@ -346,7 +348,7 @@ public class UserDBOperations {
 
 						LogWriter.LOGGER.info("operatorBalance : " + operatorBalance);
 
-						if (userBalance <= Double.parseDouble(amount)) {
+						if (userBalance < Double.parseDouble(amount)) {
 							userBalanceFlag = "5";
 							additional_info = (NullPointerExceptionHandler.isNullOrEmpty(additional_info) ? ""
 									: (additional_info + " | ")) + "Insufficient user balance.";
@@ -576,6 +578,7 @@ public class UserDBOperations {
 		String time = "";
 		String remarks = "";
 		String payment_method = "";
+		String ref_trx_id = "";
 		
 		subject = fetchMailSubject(action);
 		mailbody = fetchMailBody(action);
@@ -618,6 +621,7 @@ public class UserDBOperations {
 			payee_phone = json.getNString("receiver_phone");
 			time = json.getNString("update_time");
 			payment_method = json.getNString("payment_method");
+			ref_trx_id = json.getNString("ref_trx_id");
 			
 			payment_method = getPaymentMethod(payment_method);
 			
@@ -631,6 +635,7 @@ public class UserDBOperations {
 			mailbody = mailbody.replace("replace_opType_here",opType);
 			mailbody = mailbody.replace("replace_time_here",time);
 			mailbody = mailbody.replace("replace_trx_id_here",trx_id);
+			mailbody = mailbody.replace("replace_ref_trx_id_here",ref_trx_id);
 			mailbody = mailbody.replace("replace_payment_method_here",payment_method);
 		}
 	
@@ -819,6 +824,17 @@ public class UserDBOperations {
 		return jsonEncoder;
 	}
 	
+	public boolean checkIfAlreadyUpdated(String trx_id, String status) {
+		boolean flag = false;
+		JsonDecoder jd = new JsonDecoder(getSingleTransaction(trx_id).getJsonObject().toString());
+		String trx_status = jd.getNString("trx_status");
+		
+		if(Integer.parseInt(status) >= Integer.parseInt(trx_status) && Integer.parseInt(trx_status)!=2) {
+			flag = true;
+		}
+		return flag;
+	}
+	
 	public JsonEncoder updateTransactionStatus(String trx_id, String status, String additional_info, String trx_type,
 			String LP_trx_status, String payment_method) {
 		JsonEncoder jsonEncoder = new JsonEncoder();
@@ -827,172 +843,177 @@ public class UserDBOperations {
 
 		LogWriter.LOGGER.info("UPDATE : " + trx_id + "	" + status + "	" + additional_info + "	" + LP_trx_status);
 
-		String sql = "UPDATE `transaction_log` SET trx_status = ?, LP_trx_status = ?, payment_method = case when ? is not null then ? else payment_method end, additional_info = case when additional_info is null and ? is not null then ? "
-				+ "when additional_info is not null and ? is not null then concat(additional_info,' | ',?) else additional_info end WHERE trx_id=?";
+		if(checkIfAlreadyUpdated(trx_id,status)) {
+			String sql = "UPDATE `transaction_log` SET trx_status = ?, LP_trx_status = ?, payment_method = case when ? is not null then ? else payment_method end, additional_info = case when additional_info is null and ? is not null then ? "
+					+ "when additional_info is not null and ? is not null then concat(additional_info,' | ',?) else additional_info end WHERE trx_id=? and trx_status in (0,1)";
 
-		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, status);
-			weTopUpDS.getPreparedStatement().setString(2, LP_trx_status);
-			weTopUpDS.getPreparedStatement().setString(3, payment_method);
-			weTopUpDS.getPreparedStatement().setString(4, payment_method);
-			weTopUpDS.getPreparedStatement().setString(5, additional_info);
-			weTopUpDS.getPreparedStatement().setString(6, additional_info);
-			weTopUpDS.getPreparedStatement().setString(7, additional_info);
-			weTopUpDS.getPreparedStatement().setString(8, additional_info);
-			weTopUpDS.getPreparedStatement().setString(9, trx_id);
-			weTopUpDS.execute();
-			weTopUpDS.closePreparedStatement();
-			errorCode = "0";
-			errorMessage = "Update successful.";
-			additional_info = "";
-		} catch (SQLException e) {
-			LogWriter.LOGGER.severe(e.getMessage());
-			errorCode = "11";
-			errorMessage = "SQL Exception";
-		}
+			try {
+				weTopUpDS.prepareStatement(sql);
+				weTopUpDS.getPreparedStatement().setString(1, status);
+				weTopUpDS.getPreparedStatement().setString(2, LP_trx_status);
+				weTopUpDS.getPreparedStatement().setString(3, payment_method);
+				weTopUpDS.getPreparedStatement().setString(4, payment_method);
+				weTopUpDS.getPreparedStatement().setString(5, additional_info);
+				weTopUpDS.getPreparedStatement().setString(6, additional_info);
+				weTopUpDS.getPreparedStatement().setString(7, additional_info);
+				weTopUpDS.getPreparedStatement().setString(8, additional_info);
+				weTopUpDS.getPreparedStatement().setString(9, trx_id);
+				weTopUpDS.execute();
+				weTopUpDS.closePreparedStatement();
+				errorCode = "0";
+				errorMessage = "Update successful.";
+				additional_info = "";
+				String balErrorCode = "-1";
+				String balErrorMessage = "General Error";
+				try {
+					
+//					for balance recharge
+					if (status.equals("2") && trx_type.equals("1")) {
+						// recharge balance
+						JsonDecoder jd = new JsonDecoder(getSingleTransaction(trx_id).getJsonObject().toString());
+						String user_id = jd.getNString("user_id");
+						String amount = jd.getNString("amount");
+						String balFlag = jd.getNString("bal_rec_status");
+						Double userBalance = getUserBalance(user_id);
 
-		String balErrorCode = "-1";
-		String balErrorMessage = "General Error";
-		try {
-			
-//			for balance recharge
-			if (status.equals("2") && trx_type.equals("1")) {
-				// recharge balance
-				JsonDecoder jd = new JsonDecoder(getSingleTransaction(trx_id).getJsonObject().toString());
-				String user_id = jd.getNString("user_id");
-				String amount = jd.getNString("amount");
-				String balFlag = jd.getNString("bal_rec_status");
-				Double userBalance = getUserBalance(user_id);
-
-				boolean flag = false;
-				LogWriter.LOGGER.info("user_id : " + user_id);
-				if (balFlag.equals("0")) {
-					flag = rechargeUserBalance(user_id, Double.parseDouble(amount));
-					if (flag) {
-						balErrorCode = "0";
-						balErrorMessage = "Successfully updated balance";
-						additional_info = (NullPointerExceptionHandler
-								.isNullOrEmpty(additional_info) ? "" : (additional_info + " | "))
-								+ "Customer Previous Balance: "+userBalance+" | Customer Updated Balance: "+getUserBalance(user_id);
-						
-						updateBalTrxStatus(trx_id, "4", additional_info, trx_type);
-						
-						String phone = getUserPhone(user_id);
-						String email = getUserEmail(user_id);
-						
-						try{
-//							send email
-							if(NullPointerExceptionHandler.isNullOrEmpty(email)) {
+						boolean flag = false;
+						LogWriter.LOGGER.info("user_id : " + user_id);
+						if (balFlag.equals("0")) {
+							flag = rechargeUserBalance(user_id, Double.parseDouble(amount));
+							if (flag) {
+								balErrorCode = "0";
+								balErrorMessage = "Successfully updated balance";
+								additional_info = (NullPointerExceptionHandler
+										.isNullOrEmpty(additional_info) ? "" : (additional_info + " | "))
+										+ "Customer Previous Balance: "+userBalance+" | Customer Updated Balance: "+getUserBalance(user_id);
 								
-							}else {
-								new UserDBOperations(weTopUpDS,configurations,logWriter).sendEmail("balancePurchaseSuccess", phone, email, trx_id);
-								updateEmailStatus(trx_id,"2");
-							}
-						}catch(Exception e) {
-							e.printStackTrace();
-						}
-					} else {
-						balErrorCode = "5";
-						balErrorMessage = "Failed to update balance";
-						updateBalTrxStatus(trx_id, "10", additional_info, trx_type);
-						String phone = getUserPhone(user_id);
-						String email = getUserEmail(user_id);
-						
-						try {
-//							send email
-							if(NullPointerExceptionHandler.isNullOrEmpty(email)) {
+								updateBalTrxStatus(trx_id, "4", additional_info, trx_type);
 								
-							}else {
-								new UserDBOperations(weTopUpDS,configurations,logWriter).sendEmail("balancePurchaseFailed", phone, email, trx_id);
-								updateEmailStatus(trx_id,"2");
-							}
-						}catch(Exception e) {
-							e.printStackTrace();
-						}
-					}
-				}
-				
-			}
-
-			//	for balance transfer
-			if (status.equals("2") && trx_type.equals("2")) {
-				// recharge balance
-				JsonDecoder jd = new JsonDecoder(getSingleTransaction(trx_id).getJsonObject().toString());
-				String payee_phone = jd.getNString("receiver_phone");
-				Double amount = Double.parseDouble(jd.getNString("amount"));
-				Double creditAmount = 0.0;
-				Double commissionAmount = 0.0;
-				Double commissionRate = 0.0;
-				String balFlag = jd.getNString("bal_rec_status");
-				Double userBalance = 0.0;
-
-				jd = new JsonDecoder(getCommissionRate(payee_phone).getJsonObject().toString());
-				
-				if(jd.getNString("ErrorCode").equals("0")) {
-					commissionRate = Double.parseDouble(jd.getNString("commission_rate"));
-					
-					commissionAmount = calculateCommissionAmount(amount,commissionRate);
-					
-					creditAmount = commissionAmount + amount;
-					
-					userBalance = getUserBalance(jd.getNString("user_id"));
-					
-					boolean flag = false;
-					LogWriter.LOGGER.info("receiver_phone : " + payee_phone);
-					if (balFlag.equals("0")) {
-						
-						flag = transferUserBalance(payee_phone, creditAmount);
-						LogWriter.LOGGER.info("balance transfered : " + flag);
-						
-						if (flag) {
-							balErrorCode = "0";
-							
-							additional_info = (NullPointerExceptionHandler
-									.isNullOrEmpty(additional_info) ? "" : (additional_info + " | "))
-									+ "Retailer Previous Balance: "+userBalance+" | Retailer Updated Balance: "+getUserBalance(jd.getNString("user_id"));
-							
-							balErrorMessage = "Successfully updated balance";
-							updateBalTrxStatus(trx_id, "4", additional_info, trx_type,commissionRate,commissionAmount,creditAmount);
-							
-							String phone = getUserPhone(jd.getNString("user_id"));
-							String email = getUserEmail(jd.getNString("user_id"));
-							
-							try {
-//								send email
-								if(NullPointerExceptionHandler.isNullOrEmpty(email)) {
-									
-								}else {
-									new UserDBOperations(weTopUpDS,configurations,logWriter).sendEmail("balanceTransferSuccess", phone, email, trx_id);
-									updateEmailStatus(trx_id,"2");
+								String phone = getUserPhone(user_id);
+								String email = getUserEmail(user_id);
+								
+								try{
+//									send email
+									if(NullPointerExceptionHandler.isNullOrEmpty(email)) {
+										
+									}else {
+										new UserDBOperations(weTopUpDS,configurations,logWriter).sendEmail("balancePurchaseSuccess", phone, email, trx_id);
+										updateEmailStatus(trx_id,"2");
+									}
+								}catch(Exception e) {
+									e.printStackTrace();
 								}
-							}catch(Exception e) {
-								e.printStackTrace();
+							} else {
+								balErrorCode = "5";
+								balErrorMessage = "Failed to update balance";
+								updateBalTrxStatus(trx_id, "10", additional_info, trx_type);
+								String phone = getUserPhone(user_id);
+								String email = getUserEmail(user_id);
+								
+								try {
+//									send email
+									if(NullPointerExceptionHandler.isNullOrEmpty(email)) {
+										
+									}else {
+										new UserDBOperations(weTopUpDS,configurations,logWriter).sendEmail("balancePurchaseFailed", phone, email, trx_id);
+										updateEmailStatus(trx_id,"2");
+									}
+								}catch(Exception e) {
+									e.printStackTrace();
+								}
 							}
+						}
+						
+					}
+
+					//	for balance transfer
+					if (status.equals("2") && trx_type.equals("2")) {
+						// recharge balance
+						JsonDecoder jd = new JsonDecoder(getSingleTransaction(trx_id).getJsonObject().toString());
+						String payee_phone = jd.getNString("receiver_phone");
+						Double amount = Double.parseDouble(jd.getNString("amount"));
+						Double creditAmount = 0.0;
+						Double commissionAmount = 0.0;
+						Double commissionRate = 0.0;
+						String balFlag = jd.getNString("bal_rec_status");
+						Double userBalance = 0.0;
+
+						jd = new JsonDecoder(getCommissionRate(payee_phone).getJsonObject().toString());
+						
+						if(jd.getNString("ErrorCode").equals("0")) {
+							commissionRate = Double.parseDouble(jd.getNString("commission_rate"));
 							
-						} else {
-							balErrorCode = "5";
-							balErrorMessage = "Failed to update balance";
-							updateBalTrxStatus(trx_id, "10", additional_info, trx_type,commissionRate,commissionAmount,creditAmount);
+							commissionAmount = calculateCommissionAmount(amount,commissionRate);
 							
-//							//	send email
+							creditAmount = commissionAmount + amount;
+							
+							userBalance = getUserBalance(jd.getNString("user_id"));
+							
+							boolean flag = false;
+							LogWriter.LOGGER.info("receiver_phone : " + payee_phone);
+							if (balFlag.equals("0")) {
+								
+								flag = transferUserBalance(payee_phone, creditAmount);
+								LogWriter.LOGGER.info("balance transfered : " + flag);
+								
+								if (flag) {
+									balErrorCode = "0";
+									
+									additional_info = (NullPointerExceptionHandler
+											.isNullOrEmpty(additional_info) ? "" : (additional_info + " | "))
+											+ "Retailer Previous Balance: "+userBalance+" | Retailer Updated Balance: "+getUserBalance(jd.getNString("user_id"));
+									
+									balErrorMessage = "Successfully updated balance";
+									updateBalTrxStatus(trx_id, "4", additional_info, trx_type,commissionRate,commissionAmount,creditAmount);
+									
+									String phone = getUserPhone(jd.getNString("user_id"));
+									String email = getUserEmail(jd.getNString("user_id"));
+									
+									try {
+//										send email
+										if(NullPointerExceptionHandler.isNullOrEmpty(email)) {
+											
+										}else {
+											new UserDBOperations(weTopUpDS,configurations,logWriter).sendEmail("balanceTransferSuccess", phone, email, trx_id);
+											updateEmailStatus(trx_id,"2");
+										}
+									}catch(Exception e) {
+										e.printStackTrace();
+									}
+									
+								} else {
+									balErrorCode = "5";
+									balErrorMessage = "Failed to update balance";
+									updateBalTrxStatus(trx_id, "10", additional_info, trx_type,commissionRate,commissionAmount,creditAmount);
+									
+//									//	send email
+								}
+							}
+						}else {
+							balErrorCode = "-4";
+							balErrorMessage = "Failed to fetch commission rate";
 						}
 					}
-				}else {
-					balErrorCode = "-4";
-					balErrorMessage = "Failed to fetch commission rate";
+					LogWriter.LOGGER.info("balErrorMessage : " + balErrorMessage);
+					jsonEncoder.addElement("balErrorCode", balErrorCode);
+					jsonEncoder.addElement("balErrorMessage", balErrorMessage);
+				}catch(Exception e) {
+					LogWriter.LOGGER.severe(e.getMessage());
+					balErrorCode = "-3";
+					balErrorMessage = "Failed to update balance";
+					jsonEncoder.addElement("balErrorCode", balErrorCode);
+					jsonEncoder.addElement("balErrorMessage", balErrorMessage);
 				}
+			} catch (SQLException e) {
+				LogWriter.LOGGER.severe(e.getMessage());
+				errorCode = "11";
+				errorMessage = "SQL Exception";
 			}
-			LogWriter.LOGGER.info("balErrorMessage : " + balErrorMessage);
-			jsonEncoder.addElement("balErrorCode", balErrorCode);
-			jsonEncoder.addElement("balErrorMessage", balErrorMessage);
-		}catch(Exception e) {
-			LogWriter.LOGGER.severe(e.getMessage());
-			balErrorCode = "-3";
-			balErrorMessage = "Failed to update balance";
-			jsonEncoder.addElement("balErrorCode", balErrorCode);
-			jsonEncoder.addElement("balErrorMessage", balErrorMessage);
+		}else {
+			errorCode = "10";
+			errorMessage = "Already updated.";
 		}
+		
 		
 		jsonEncoder.addElement("ErrorCode", errorCode);
 		jsonEncoder.addElement("ErrorMessage", errorMessage);
@@ -1348,12 +1369,13 @@ public class UserDBOperations {
 		Double credit_amount = 0.0;
 		Double commission_rate = 0.0;
 		String notification_email = "";
+		String ref_trx_id = "";
 
 		String errorCode = "-1";
 		String errorMessage = "General error.";
 
 		String sql = "SELECT user_id, trx_id, amount, receiver_phone, trx_status, bal_rec_status, date_format(insert_time, '%Y-%m-%d %H:%i:%S'),date_format(update_time, '%Y-%m-%d %H:%i:%S') , additional_info, "
-				+ "payment_method, card_brand, card_number, bank, bkash_payment_number, billing_name, trx_type,commission_amount, credit_amount, commission_rate,notification_email FROM transaction_log where trx_id=?";
+				+ "payment_method, card_brand, card_number, bank, bkash_payment_number, billing_name, trx_type,commission_amount, credit_amount, commission_rate,notification_email,ref_trx_id FROM transaction_log where trx_id=?";
 
 		
 		try {
@@ -1381,6 +1403,7 @@ public class UserDBOperations {
 				credit_amount = weTopUpDS.getResultSet().getDouble(18);
 				commission_rate = weTopUpDS.getResultSet().getDouble(19);
 				notification_email = weTopUpDS.getResultSet().getString(20);
+				ref_trx_id = weTopUpDS.getResultSet().getString(21);
 
 				errorCode = "0";
 				errorMessage = "getStatus successful.";
@@ -1423,6 +1446,8 @@ public class UserDBOperations {
 		jsonEncoder.addElement("commission_rate", ""+commission_rate);
 		jsonEncoder.addElement("notification_email", ""+notification_email);
 		jsonEncoder.addElement("trx_type", trx_type);
+		jsonEncoder.addElement("ref_trx_id",
+				NullPointerExceptionHandler.isNullOrEmpty(ref_trx_id) ? "" : ref_trx_id);
 
 		jsonEncoder.buildJsonObject();
 		return jsonEncoder;
@@ -1663,8 +1688,31 @@ public class UserDBOperations {
 
 		String trx_history = "";
 
-		String sql = "SELECT a.trx_id, a.payee_phone, a.amount, t.trx_status, t.LP_trx_status, a.top_up_status, date_format(a.insert_time, '%Y-%m-%d %H:%i:%S'), t.payment_method FROM topup_log a left join transaction_log t on a.trx_id=t.trx_id WHERE a.user_id=? order by a.insert_time desc";
+		//	String sql = "SELECT a.trx_id, a.payee_phone, a.amount, t.trx_status, t.LP_trx_status, a.top_up_status, date_format(a.insert_time, '%Y-%m-%d %H:%i:%S'), t.payment_method FROM topup_log a left join transaction_log t on a.trx_id=t.trx_id WHERE a.user_id=? and a.id in (select max(id) from topup_log group by trx_id) order by a.insert_time desc";
 
+		String sql = "select\n" + 
+				"-- JSON_LENGTH(JSON_ARRAYAGG(t.top_up_status)) counter,\n" + 
+				"-- GROUP_CONCAT(t.top_up_status ORDER BY t.top_up_status DESC SEPARATOR ',') gc,\n" + 
+				"-- JSON_OBJECTAGG(t.top_up_status, t.retry_counter) jsn,\n" + 
+				"-- JSON_ARRAYAGG(t.top_up_status) ary,\n" + 
+				"-- max(t.retry_counter) rc,\n" + 
+				"-- max(t.top_up_status),\n" + 
+				"-- ,max(rp.max_attempt)\n" + 
+				"--  ,min(t.user_id),max(t.user_id),min(rp.id),max(rp.id)\n" + 
+				"t.trx_id,min(t.payee_phone),min(tx.amount),min(tx.trx_status),min(lp_trx_status),\n" + 
+				"case when JSON_CONTAINS(JSON_ARRAYAGG(t.top_up_status),JSON_ARRAY('4')) then '4' -- definite success\n" + 
+				"	  when !JSON_CONTAINS(JSON_ARRAYAGG(t.top_up_status),JSON_ARRAY('4')) \n" + 
+				"           and  (max(t.retry_counter)>=any_value(rp.max_attempt) \n" + 
+				"                  or max(tx.trx_status) !=2 ) then '10' -- definite fail\n" + 
+				"	  else '11' -- processing\n" + 
+				" end topup_status,\n" + 
+				"date_format(min(t.insert_time), '%Y-%m-%d %H:%i:%S'),min(tx.payment_method)\n" + 
+				"\n" + 
+				"from topup_log t inner join transaction_log tx on t.trx_id=tx.trx_id \n" + 
+				"left join retry_profile rp on tx.retry_profile = rp.id\n" + 
+				"where tx.user_id=? -- CHANGE\n" + 
+				"group by t.trx_id\n" + 
+				"order by min(t.insert_time) desc";
 		try {
 			weTopUpDS.prepareStatement(sql);
 			weTopUpDS.getPreparedStatement().setString(1, userID);
