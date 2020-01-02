@@ -22,9 +22,10 @@ public class WeTopUpDS {
 	public WeTopUpDS(){
 		super();
 		try {
+			
 			initialContext = new InitialContext();
-		//	dataStore = (DataSource)initialContext.lookup( "java:/WeTopUpSandboxDS" );	//	sandbox
-		dataStore = (DataSource)initialContext.lookup( "java:/WeTopUpDS" );  // live
+//			dataStore = (DataSource)initialContext.lookup( "java:/WeTopUpSandboxDS" );	//	sandbox
+			dataStore = (DataSource)initialContext.lookup( "java:/WeTopUpDS" );  // live
 			connection = dataStore.getConnection();
 		}catch(Exception e){
 			System.out.println("Exception thrown " +e);
@@ -43,6 +44,10 @@ public class WeTopUpDS {
 	public PreparedStatement prepareStatement(String statement) throws SQLException {
 		this.preparedStatement=this.getConnection().prepareStatement(statement);
 		return this.preparedStatement;
+	}
+	public PreparedStatement newPrepareStatement(String statement) throws SQLException {
+		PreparedStatement preparedStatement=this.getConnection().prepareStatement(statement);
+		return preparedStatement;
 	}
 	public PreparedStatement prepareStatement(String statement,boolean returnGeneratedKeys) throws SQLException {
 		if(returnGeneratedKeys) {

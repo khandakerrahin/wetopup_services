@@ -56,6 +56,23 @@ public class RegistrationProcessor {
 		return retval;
 	}
 	
+	public String processAppUserRegistration(String message, String messageBody) {
+		String retval="E";
+		JsonDecoder registrationInfo;
+		if(messageBody.isEmpty()) {
+			registrationInfo=new JsonDecoder(message);
+		}else {
+			registrationInfo=new JsonDecoder(messageBody);
+		}
+		if(registrationInfo.getErrorCode().equals("0")) {
+			retval=new UserRegistration(this.weTopUpDS,this.logWriter,this.configurations).registerNewAppUser(registrationInfo).getJsonObject().toString();
+		}else{
+			//error decoding json
+			retval="E:JSON string invalid";
+		}
+		return retval;
+	}
+	
 	/**
 	 * @json user_name, phone, user_email, user_type, password
 	 * @example {"appname":"value","apppass":"value","username":"Shaker","email":"shaker@spiderdxb.com","phone":"01751501178","password":"shaker123"}

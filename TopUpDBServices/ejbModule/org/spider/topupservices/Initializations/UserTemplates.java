@@ -19,7 +19,7 @@ public class UserTemplates {
 	}
 	public void getUserTemplates(WeTopUpDS dsConnection) {
 		try {
-			String sql="SELECT c.action, c.template_id, t.username, t.subject, t.template_name, t.template, t.variables, t.json_request FROM template_table t left join template_configuration c on c.template_id=t.id;";
+			String sql="SELECT c.action, c.template_id, t.username, t.subject, t.template_name, t.template, t.variables, t.json_request, t.smsTemplate FROM template_table t left join template_configuration c on c.template_id=t.id;";
 			dsConnection.prepareStatement(sql);
 			ResultSet rs = dsConnection.executeQuery();
 			map.clear();
@@ -32,6 +32,7 @@ public class UserTemplates {
 				templateInfo.add(rs.getString("template"));
 				templateInfo.add(rs.getString("variables"));
 				templateInfo.add(rs.getString("json_request"));
+				templateInfo.add(rs.getString("smsTemplate"));
 				map.put(rs.getString("action"), templateInfo);
 			}
 		}catch(Exception e){

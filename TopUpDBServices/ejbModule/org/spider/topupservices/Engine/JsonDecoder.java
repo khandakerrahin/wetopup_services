@@ -39,7 +39,7 @@ public class JsonDecoder {
 		jsonObject=null;
 		jsonObjectMap=null;
 		try {
-			LogWriter.LOGGER.info("Decoding : "+ this.inputJSONString);
+			//LogWriter.LOGGER.info("Decoding : "+ this.inputJSONString);
 			
 			if(!jsonString.isEmpty()) {
 
@@ -101,12 +101,16 @@ public class JsonDecoder {
 			return this.jsonObject.getString(s);
 		}catch(NullPointerException n) {
 			return "";
+		}catch(ClassCastException cE) {
+			return "";
 		}
 	}
 	public int getEInt(String s) {
 		try{
 			return this.jsonObject.getInt(s);
 		}catch(NullPointerException n) {
+			return 0;
+		}catch(ClassCastException cE) {
 			return 0;
 		}catch(Exception e) {
 			return 0;

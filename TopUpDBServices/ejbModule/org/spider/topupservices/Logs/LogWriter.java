@@ -242,6 +242,10 @@ public class LogWriter {
 	public void appendInputParameters(String inputParameters) {
 		this.inputParameters = NullPointerExceptionHandler.isNullOrEmpty(this.inputParameters)?inputParameters:this.inputParameters+"|"+inputParameters;
 	}
+	
+	public void setInputParameters(String inputParameters) {
+		this.inputParameters = inputParameters;
+	}
 	/**
 	 * 
 	 * @param response

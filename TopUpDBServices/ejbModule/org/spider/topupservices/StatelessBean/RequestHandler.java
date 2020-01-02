@@ -74,6 +74,7 @@ public class RequestHandler implements RequestHandlerLocal {
 		String message 	=	NullPointerExceptionHandler.isNullOrEmpty(msg.getString("message"))?"":msg.getString("message");
 		String action 	= 	NullPointerExceptionHandler.isNullOrEmpty(msg.getString("action")) ?"":msg.getString("action");
 		String messageBody=	NullPointerExceptionHandler.isNullOrEmpty(msg.getString("body"))?"":msg.getString("body");
+		String appToken 	=	NullPointerExceptionHandler.isNullOrEmpty(msg.getString("appToken"))?"":msg.getString("appToken");
 		String isTest 	= 	NullPointerExceptionHandler.isNullOrEmpty(msg.getString("isTest"))?"":msg.getString("isTest");
 		String src   	= 	NullPointerExceptionHandler.isNullOrEmpty(msg.getString("src"))?"":msg.getString("src");
 		String target  	= 	NullPointerExceptionHandler.isNullOrEmpty(msg.getString("target"))?"":msg.getString("target");
@@ -96,17 +97,27 @@ public class RequestHandler implements RequestHandlerLocal {
 		LogWriter.LOGGER.info("Message Body :"+messageBody);
 		
 		try {
-			retval=new UserOperations(dsConn,this.logWriter,this.configurations).verifyUser(message,messageBody);
-			if(new JsonDecoder(retval).getNString("ErrorCode").equals("0")) {
-				LogWriter.LOGGER.info("application authentication succesful.");
+			retval=new UserOperations(dsConn,this.logWriter,this.configurations).verifyUser(message,messageBody,appToken);
+			JsonDecoder jd = new JsonDecoder(retval);
+			
+			if(jd.getNString("accessFlag").equals("0")) {
+				LogWriter.LOGGER.info("application authentication successful.");
 				LogWriter.LOGGER.info("action : "+action.toUpperCase());
+								
 				switch(action.toUpperCase()) {
 				case "LOGIN":
 					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).processLogin(message,messageBody);
 					break;
+				case "ADMINLOGIN":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).processAdminLogin(message,messageBody);
+					break;
 				case "REGISTER":
 					this.logWriter.setUserId(NullPointerExceptionHandler.isNullOrEmpty(msg.getString("userId"))?"":msg.getString("userId"));
 					retval=new RegistrationProcessor(dsConn,this.logWriter,this.configurations).processUserRegistration(message,messageBody);
+					break;
+				case "REGISTERAPP":
+					this.logWriter.setUserId(NullPointerExceptionHandler.isNullOrEmpty(msg.getString("userId"))?"":msg.getString("userId"));
+					retval=new RegistrationProcessor(dsConn,this.logWriter,this.configurations).processAppUserRegistration(message,messageBody);
 					break;
 				case "REGISTERRETAILER":
 					this.logWriter.setUserId(NullPointerExceptionHandler.isNullOrEmpty(msg.getString("userId"))?"":msg.getString("userId"));
@@ -125,8 +136,35 @@ public class RequestHandler implements RequestHandlerLocal {
 				case "CHECKUSERENTRY":
 					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).checkUserEntry(message,messageBody);
 					break;
+				case "REQUESTEMAILOTP":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).requestOTP(message,messageBody);
+					break;
+				case "VERIFYOTP":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).checkOTP(message,messageBody);
+					break;
+				case "REQUESTSMSOTP":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).requestSmsOTP(message,messageBody);
+					break;
+				case "VERIFYSMSOTP":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).checkSmsOTP(message,messageBody);
+					break;
+				case "SETPIN":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).setPin(message,messageBody);
+					break;
+				case "VERIFYPIN":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).checkPin(message,messageBody);
+					break;
 				case "UPDATEKEY":
 					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).updateKey(message,messageBody);
+					break;
+				case "UPDATEUSERINFO":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).updateUserInfoByEmail(message,messageBody);
+					break;
+				case "UPDATEUSERINFOBYID":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).updateUserInfoByID(message,messageBody);
+					break;
+				case "REQUESTUPDATEUSERINFO":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).requestUpdateUserInfo(message,messageBody);
 					break;
 				case "UPDATEPASSWORD":
 					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).updatePassword(message,messageBody);
@@ -137,8 +175,50 @@ public class RequestHandler implements RequestHandlerLocal {
 				case "FETCHUSERBYKEY":
 					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).fetchUserByKey(message,messageBody);
 					break;
+				case "FETCHUSER_old":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).fetchUser(message,messageBody);
+					break;
+				case "FETCHUSERSTATUS":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).fetchUserStatus(message,messageBody);
+					break;
+//				case "UPDATECARDINFO":
+//					retval=new UserOperations(dsConn,this.logWriter,this.configurations).updateCardInfo(message,messageBody);
+//					break;
+				case "CHECKUPDATES":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).checkUpdates(message,messageBody);
+					break;
+				case "FETCHUSERCARDLIST":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchUserCardList(message,messageBody);
+					break;
+				case "FETCHUSERCARDCOUNTS":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchUserCardCounts(message,messageBody);
+					break;
+				case "FETCHPENDINGTRXUSER":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchPendingTrxUser(message,messageBody);
+					break;
+				case "FETCHPENDINGTRXADMIN":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchPendingTrxAdmin(message,messageBody);
+					break;
+				case "REQUESTUPDATETRXUSER":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).requestUpdateTrxUser(message,messageBody);
+					break;
+				case "UPDATEPENDINGTRX":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).updatePendingTrx(message,messageBody);
+					break;
 				case "FETCHUSERBALANCE":
 					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).fetchUserBalance(message,messageBody);
+					break;
+				case "ADDQUICKRECHARGE":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).addQuickRecharge(message,messageBody);
+					break;
+				case "MODIFYQUICKRECHARGE":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).modifyQuickRecharge(message,messageBody);
+					break;
+				case "GETQUICKRECHARGE":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).getQuickRecharge(message,messageBody);
+					break;
+				case "GETOFFERS":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).getOffers(message,messageBody);
 					break;
 //				case "INSERTTRANSACTION":
 //					retval=new UserOperations(dsConn,this.logWriter,this.configurations).insertTransaction(message,messageBody);
@@ -158,8 +238,29 @@ public class RequestHandler implements RequestHandlerLocal {
 				case "FETCHTRANSACTIONHISTORY":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchTransactionHistory(message,messageBody);
 					break;
+				case "FETCHSTOCKHISTORY":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchStockHistory(message,messageBody);
+					break;
 				case "FETCHRETAILERLIST":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchRetailerList(message,messageBody);
+					break;
+				case "ALLOCATESHADOWOPBALANCE":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).allocateShadowOpBalance(message,messageBody);
+					break;
+				case "FETCHOPBALANCE":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchOpBalance(message,messageBody);
+					break;
+				case "FETCHSHADOWOPBALANCE":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchShadowOpBalance(message,messageBody);
+					break;
+				case "FETCHALLBALANCE":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchAllBalance(message,messageBody);
+					break;
+				case "FETCHSHADOWOPBALANCEHISTORY":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchShadowOpBalanceHistory(message,messageBody);
+					break;
+				case "FETCHUSERRATES":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchUserRates(message,messageBody);
 					break;
 				case "FETCHTOPUPHISTORY":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchTopUpHistory(message,messageBody);
@@ -173,12 +274,77 @@ public class RequestHandler implements RequestHandlerLocal {
 				case "FETCHACCESSKEY":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchAccessKey(message,messageBody);
 					break;
+				case "TOPUPFILEINSERT":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).topupFileInsert(message,messageBody);
+					break;
+				case "GETUPLOADSTATUS":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).getUploadStatus(message,messageBody);
+					break;
+				case "FETCHUPLOADEDFILEDETAILS":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchUploadedFileDetails(message,messageBody);
+					break;
+				case "DOWNLOADFILETOPUPREPORT":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).downloadFileTopupReport(message,messageBody);
+					break;
+				case "GETDOWNLOADSTATUS":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).getDownloadStatus(message,messageBody);
+					break;	
+				case "FETCHINVALIDFILEROWS":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchInvalidFileRows(message,messageBody);
+					break;
+				case "PROCESSFILETOPUP":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).processFileTopup(message,messageBody);
+					break;
+				case "GETFILETOPUPSUMMARY":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).getFileTopSummary(message,messageBody);
+					break;
+				case "GETFILETOPUPHISTORY":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).getFileTopHistory(message,messageBody);
+					break;
+				case "FETCHFILETOPUPS":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchFileTopUpHistory(message,messageBody);
+					break;
+				case "FETCHSINGLEFILETOPUPS":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchSingleFileTopUpHistory(message,messageBody);
+					break;
 				case "SENDEMAIL":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).sendEmail(message,messageBody);
 					break;
 				case "CANCELTOPUP":
 					retval="cancelled by user.";
-					break;	
+					break;
+				case "UPLOADIMAGE":
+					break;
+//				//APIs for APPAuthentication
+//				case "REQUESTAPPTOKEN":
+//					break;				
+					
+				//APIs for Topup through API
+				case "AUTHENTICATE":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).authenticateUser(message,messageBody);
+					break;
+				case "GETTOPUPSTATUSAPI":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).getTopUpStatusApi(message,messageBody);
+					break;
+				case "INSERTTOPUPAPI":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).insertTopupApi(message,messageBody);
+					break;
+				case "UPDATEAPIKEY":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).updateApiKey(message,messageBody);
+					break;
+				case "UPDATETOKENVALIDITY":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).updateTokenValidity(message,messageBody);
+					break;
+				case "UPDATEAPIHOOKURL":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).updateApiHookUrl(message,messageBody);
+					break;
+				case "FETCHAPIINFO":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).fetchApiInfo(message,messageBody);
+					break;
+				case "FETCHUSERBALANCEAPI":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).fetchUserBalanceApi(message,messageBody);
+					break;
+					
 				default:
 					jsonEncoder.addElement("ErrorCode", "-9");
 					jsonEncoder.addElement("ErrorMessage", "Invalid action");
@@ -186,12 +352,21 @@ public class RequestHandler implements RequestHandlerLocal {
 					retval=jsonEncoder.getJsonObject().toString();
 					break;
 				}
-			}else {
-				LogWriter.LOGGER.info("application authentication failed.");
+			}
+			else {
+				if(action.toUpperCase().equals("REQUESTAPPTOKEN")) {
+					
+				} 
+//				else {
+//					jsonEncoder.addElement("ErrorCode", "-5");
+//					jsonEncoder.addElement("ErrorMessage", "User is not authorized to perform this action.");
+//					jsonEncoder.buildJsonObject();
+//					retval=jsonEncoder.getJsonObject().toString();
+//				}
 			}
 		}
 		finally{
-			LogWriter.LOGGER.info("retVal : "+retval);
+			LogWriter.LOGGER.info("Reply : ErrorCode =  "+new JsonDecoder(retval).getNString("ErrorCode"));
 			if(dsConn.getConnection() != null){
 				try { 
 				this.logWriter.setStatus(Integer.parseInt(new JsonDecoder(retval).getErrorCode())); }catch(NumberFormatException nfe) {}

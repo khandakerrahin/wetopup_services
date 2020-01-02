@@ -24,6 +24,7 @@ import org.spider.topupservices.Utilities.QueueProcess;
 /**
  * Message-Driven Bean implementation class for: spidertopup
  */
+
 @MessageDriven(
 		activationConfig = { 
 				@ActivationConfigProperty(propertyName = "destination", propertyValue = "queue/spidertopup"), 
@@ -95,7 +96,7 @@ public class TopUpServiceMDB implements MessageListener {
 					reply ="Configurations Loaded";
 				}else{               
 					reply  =  reqHandle.processNewRequest(msg,loadConf,force);
-					LOGGER.info("Reply: "+reply);
+					//LOGGER.info("Reply: "+reply);
 				}
 				// reply  =  reqHandle.processNewRequest(msg,configurations,force);
 
