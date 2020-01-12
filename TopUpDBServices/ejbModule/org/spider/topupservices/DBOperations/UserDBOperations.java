@@ -559,7 +559,8 @@ public class UserDBOperations {
 			return jsonEncoder;
 //		} else if (amount.matches("[0-9]+") && (amount.length() > 1 || !trx_type.equals("0"))) {
 //		} else if (amount.matches("[0-9]+") && (amount.length() > 1)) {
-		} else if (amount.matches("[0-9]+") && (Integer.parseInt(amount) > 9) && (Integer.parseInt(amount) <=1000 )) {	
+//		} else if (amount.matches("[0-9]+") && (Integer.parseInt(amount) > 9) && (Integer.parseInt(amount) <=1000 )) {
+		} else if (amount.matches("[0-9]+") && (Integer.parseInt(amount) > 9)) {
 			String stockConfigurations = fetchUserStockConfigurations(user_id);
 			
 			if (NullPointerExceptionHandler.isNullOrEmpty(operator)) {
@@ -578,8 +579,36 @@ public class UserDBOperations {
 					double maxTopupAmount = Double.parseDouble(jdTrx.getNString("maximumTopupAmount"));
 					int maxFailedCount = Integer.parseInt(jdTrx.getNString("maximumFailedCount"));
 					double maxFailedAmount = Double.parseDouble(jdTrx.getNString("maximumFailedAmount"));
+					double maxPrepaidAmount = Double.parseDouble(jdTrx.getNString("maximumPrepaidAmount"));
+					double maxPostpaidAmount = Double.parseDouble(jdTrx.getNString("maximumPostpaidAmount"));
+					
+					double allowedMaxHere = opType.equals("2")?maxPostpaidAmount:maxPrepaidAmount;
+					
+					LogWriter.LOGGER.info("Allowed max	:	"+allowedMaxHere);
+					
 					
 					if (jdTrx.getNString("ErrorCode").equals("0")) {
+						// check if Prepaid/postpaid limit exceeded
+						
+						if(trx_type.equals("0") && Integer.parseInt(amount)>allowedMaxHere) {
+							trxErrorCode = "-9";
+							trxErrorMessage = "Invalid amount.";
+							LogWriter.LOGGER.info(trxErrorMessage);
+
+							jsonEncoder.addElement("ErrorCode", trxErrorCode);
+							jsonEncoder.addElement("trxErrorCode", trxErrorCode);
+							jsonEncoder.addElement("trxErrorMessage", trxErrorMessage);
+							jsonEncoder.addElement("topUpErrorCode", topUpErrorCode);
+							jsonEncoder.addElement("topUpErrorMessage", topUpErrorMessage);
+							jsonEncoder.addElement("accessKey", accessKey);
+							jsonEncoder.addElement("opBalanceFlag", opBalanceFlag);
+							jsonEncoder.addElement("userBalanceFlag", userBalanceFlag);
+
+							jsonEncoder.buildJsonObject();
+							// errorCode=jsonEncoder;
+
+							return jsonEncoder;
+						}
 						
 						// check if Topup limit exceeded for user
 						jdTrx = new JsonDecoder(getUserTopupSummary(user_id).getJsonObject().toString());
@@ -3449,6 +3478,11 @@ public class UserDBOperations {
 		Double minimumChargeAmount = 1.0;
 		Double maximumChargeAmount = 10000.0;
 		Double maximumTransferAmount = 5000.0;
+		
+		Double maximumPrepaidAmount = 500.0;
+		Double maximumPostpaidAmount = 500.0;
+		
+		
 		int maximumTransferCount = 100;
 		Double maximumStockRefillAmount = 500.0;
 		int maximumStockRefillCount = 10;
@@ -3463,7 +3497,7 @@ public class UserDBOperations {
 		String sql = "SELECT t.cash_rate, t.visa_rate, t.master_rate, t.amex_rate, t.bkash_rate, t.minimum_transfer_amount, t.floor, t.transfer_rate, t.minimum_charge_amount, "
 				+ "t.maximum_charge_amount, t.maximum_transfer_amount, t.maximum_transfer_count, "
 				+ "t.maximum_stock_refill_amount, t.maximum_stock_refill_count, t.maximum_topup_amount, t.maximum_topup_count, t.maximum_failed_amount, t.maximum_failed_count, "
-				+ "t.maximum_stock_amount, t.maximum_msisdn_failed_count, u.user_id "
+				+ "t.maximum_stock_amount, t.maximum_msisdn_failed_count, t.maximum_prepaid_amount, t.maximum_postpaid_amount, u.user_id "
 				+ "FROM users_info u left join commission_configurations t on u.user_id=t.user_id where u.phone=?  or u.user_id=? order by u.created_at desc";
 		
 		try {
@@ -3495,7 +3529,10 @@ public class UserDBOperations {
 				maximumStockAmount = rs.getDouble(19);
 				maximumMsisdnFailedCount = rs.getInt(20);
 				
-				user_id = rs.getString(21);
+				maximumPrepaidAmount = rs.getDouble(21);
+				maximumPostpaidAmount = rs.getDouble(22);
+				
+				user_id = rs.getString(23);
 			}
 
 			errorCode = "0";
@@ -3539,6 +3576,8 @@ public class UserDBOperations {
 		jsonEncoder.addElement("maximumFailedCount", "" + maximumFailedCount);
 		jsonEncoder.addElement("maximumStockAmount", "" + maximumStockAmount);
 		jsonEncoder.addElement("maximumMsisdnFailedCount", "" + maximumMsisdnFailedCount);
+		jsonEncoder.addElement("maximumPrepaidAmount", "" + maximumPrepaidAmount);
+		jsonEncoder.addElement("maximumPostpaidAmount", "" + maximumPostpaidAmount);
 		
 		jsonEncoder.addElement("floor", "" + floor);
 		

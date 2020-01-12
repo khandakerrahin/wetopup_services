@@ -55,6 +55,10 @@ public class UserOperations {
 		return new UserDBOperations(weTopUpDS,configurations,logWriter).getQuickRecharge(userID).getJsonObject().toString();
 	}
 	
+	public String fetchUserLimits(String userID) {
+		return new UserDBOperations(weTopUpDS,configurations,logWriter).getUserOperationConfig(userID).getJsonObject().toString();
+	}
+	
 	public String getOpOffers(String operator,String flag, String lastUpdateTime) {
 		return new UserDBOperations(weTopUpDS,configurations,logWriter).getOffers(operator,flag, lastUpdateTime).getJsonObject().toString();
 	}
@@ -375,6 +379,24 @@ public class UserOperations {
 			retval = getQuickRecharge(
 				json.getNString("userID")
 			);
+		} else {
+			retval = "E:JSON string invalid";
+		}
+		return retval;
+	}
+	
+	
+	public String fetchUserLimits(String message, String messageBody) {
+		String retval = "E";
+		JsonDecoder json;
+		if (messageBody.isEmpty()) {
+			json = new JsonDecoder(message);
+		} else {
+			json = new JsonDecoder(messageBody);
+		}
+		
+		if (json.getErrorCode().equals("0")) {
+			retval = fetchUserLimits(json.getNString("userID"));
 		} else {
 			retval = "E:JSON string invalid";
 		}

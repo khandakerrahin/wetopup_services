@@ -208,6 +208,9 @@ public class RequestHandler implements RequestHandlerLocal {
 				case "FETCHUSERBALANCE":
 					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).fetchUserBalance(message,messageBody);
 					break;
+				case "FETCHUSERLIMITS":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchUserLimits(message,messageBody);
+					break;
 				case "ADDQUICKRECHARGE":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).addQuickRecharge(message,messageBody);
 					break;
