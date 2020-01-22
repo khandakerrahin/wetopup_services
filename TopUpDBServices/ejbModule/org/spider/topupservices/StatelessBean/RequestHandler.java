@@ -229,6 +229,9 @@ public class RequestHandler implements RequestHandlerLocal {
 				case "INSERTTRANSACTION":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).insertTransaction(message,messageBody);
 					break;
+				case "UPDATETOPUPSTATUSHOOK":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).updateTopUpStatusHook(message,messageBody);
+					break;
 				case "SETPAYMENTMETHOD":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).setPaymentMethod(message,messageBody);
 					break;

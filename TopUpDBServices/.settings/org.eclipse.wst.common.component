@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?><project-modules id="moduleCoreId" project-version="1.5.0">
-    <wb-module deploy-name="TopUpDBServices">
+    <wb-module deploy-name="WeTopUpServices">
         <wb-resource deploy-path="/" source-path="/ejbModule" tag="defaultRootSource"/>
-        <property name="java-output-path" value="/TopUpDBServices/build/classes"/>
+        <property name="java-output-path" value="/WeTopUpServices/build/classes"/>
     </wb-module>
 </project-modules>

@@ -22,21 +22,37 @@ import org.spider.topupservices.StatelessBean.RequestHandlerLocal;
 import org.spider.topupservices.Utilities.QueueProcess;
 
 /**
- * Message-Driven Bean implementation class for: spidertopup
+ * Message-Driven Bean implementation class for: wetopupservices
  */
 
+//	LIVE
 @MessageDriven(
+	activationConfig = { 
+			@ActivationConfigProperty(propertyName = "destination", propertyValue = "queue/wetopupservices"), 
+			@ActivationConfigProperty(propertyName = "destinationType", propertyValue = "javax.jms.Queue"),
+			@ActivationConfigProperty(propertyName = "subscriptionDurability", propertyValue = "Durable"),
+			@ActivationConfigProperty(propertyName = "clientID", propertyValue = "wetopupservices"),
+			@ActivationConfigProperty(propertyName = "maxSession", propertyValue = "120"),
+			@ActivationConfigProperty(propertyName = "messageSelector", propertyValue = "target = 'ENGINE'")
+	}, 
+	//mappedName = "java:/queue/testQ")
+//	mappedName = "java:/jms/queue/wetopupservices")
+	mappedName = "java:/queue/wetopupservices")/**/
+
+//	sandbox
+/*@MessageDriven(
 		activationConfig = { 
-				@ActivationConfigProperty(propertyName = "destination", propertyValue = "queue/spidertopup"), 
+				@ActivationConfigProperty(propertyName = "destination", propertyValue = "queue/wetopupservicessandbox"), 
 				@ActivationConfigProperty(propertyName = "destinationType", propertyValue = "javax.jms.Queue"),
 				@ActivationConfigProperty(propertyName = "subscriptionDurability", propertyValue = "Durable"),
-				@ActivationConfigProperty(propertyName = "clientID", propertyValue = "spidertopup"),
+				@ActivationConfigProperty(propertyName = "clientID", propertyValue = "wetopupservicessandbox"),
 				@ActivationConfigProperty(propertyName = "maxSession", propertyValue = "120"),
 				@ActivationConfigProperty(propertyName = "messageSelector", propertyValue = "target = 'ENGINE'")
 		}, 
 		//mappedName = "java:/queue/testQ")
-//		mappedName = "java:/jms/queue/spidertopup")
-		mappedName = "java:/queue/spidertopup")
+//		mappedName = "java:/jms/queue/wetopupservicessandbox")
+		mappedName = "java:/queue/wetopupservicessandbox")/**/
+
 
 
 public class TopUpServiceMDB implements MessageListener {
@@ -45,7 +61,7 @@ public class TopUpServiceMDB implements MessageListener {
 	QueueConnection connection;
 	QueueSession session;
 	MessageProducer messageProducer;
-	String appName  = "spidertopup";
+	String appName  = "wetopupservices";
 	public Configurations loadConf = new Configurations();
 	private static final Logger LOGGER = Logger.getLogger(TopUpServiceMDB.class.getName());
 	//    AlarmProducer dbAlarm     = new AlarmProducer(4,"database connection fails",appName);

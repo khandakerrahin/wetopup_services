@@ -98,7 +98,7 @@ public class LogWriter {
 		
 		this.action			=subString(this.action			,255);
 		this.userId			=subString(this.userId			,45);
-		this.log            =subString(this.log				,1000);
+		this.log            =subString(this.log				,2000);
 //		this.log            =subString(log.replaceAll("'", "''")          ,1000);
 //		this.status         =subString(this.status			,4);
 		this.channel        =subString(this.channel			,60);

@@ -71,6 +71,10 @@ public class UserOperations {
 		return new UserDBOperations(weTopUpDS,configurations,logWriter).updatePaymentMethod(trx_id, payment_method).getJsonObject().toString();
 	}
 	
+	public String updateTopStatusHook(String trx_id) {
+		return new UserDBOperations(weTopUpDS,configurations,logWriter).updateTopUpStatusHook(trx_id).getJsonObject().toString();
+	}
+	
 	public String updateStatus(String trx_id, String status) {
 		return new UserDBOperations(weTopUpDS,configurations,logWriter).updateTopUpStatus(trx_id, status).getJsonObject().toString();
 	}
@@ -433,6 +437,22 @@ public class UserOperations {
 		
 		if (json.getErrorCode().equals("0")) {
 			retval = sendEmail(json.getNString("action"),json.getNString("key"),json.getNString("email"),json.getNString("trx_id"));
+		} else {
+			retval = "E:JSON string invalid";
+		}
+		return retval;
+	}
+	
+	public String updateTopUpStatusHook(String message, String messageBody) {
+		String retval = "E";
+		JsonDecoder json;
+		if (messageBody.isEmpty()) {
+			json = new JsonDecoder(message);
+		} else {
+			json = new JsonDecoder(messageBody);
+		}
+		if (json.getErrorCode().equals("0")) {
+			retval = updateTopStatusHook(json.getNString("trx_id"));
 		} else {
 			retval = "E:JSON string invalid";
 		}

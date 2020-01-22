@@ -320,8 +320,8 @@ public class Login {
 	}
 	
 	public String verifyGoogle(String gtoken) throws Exception {
-		String urlReq = "https://10.10.1.13:8443/HttpReceiver/HttpReceiver?destinationName=spideroptopup&destinationType=queue&clientid=spideroptopup&target=ENGINE&LoadConf=N"
-				+ "&message={\"appname\":\"weTopUp\",\"apppass\":\"Wetopup123\",\"gtoken\":\"" + gtoken + "\"}&reply=true&action=verifyGtoken";
+		String urlReq = "https://10.10.1.13:8443/HttpReceiver/HttpReceiver?destinationName=spidertopupopcore&destinationType=queue&clientid=spidertopupopcore&target=ENGINE&LoadConf=N"
+				+ "&message={\"appname\":\"WeTopUpRechargeServices\",\"apppass\":\"2441139%26WE\",\"gtoken\":\"" + gtoken + "\"}&reply=true&action=verifyGtoken";
 		String data = "";
 		JsonObject personObject1;
 		String response = "";
