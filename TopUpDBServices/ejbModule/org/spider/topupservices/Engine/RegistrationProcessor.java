@@ -65,7 +65,7 @@ public class RegistrationProcessor {
 			registrationInfo=new JsonDecoder(messageBody);
 		}
 		if(registrationInfo.getErrorCode().equals("0")) {
-			retval=new UserRegistration(this.weTopUpDS,this.logWriter,this.configurations).registerNewAppUser(registrationInfo).getJsonObject().toString();
+			retval=new UserRegistration(this.weTopUpDS,this.logWriter,this.configurations).registerNewAppUser(registrationInfo, "").getJsonObject().toString();
 		}else{
 			//error decoding json
 			retval="E:JSON string invalid";

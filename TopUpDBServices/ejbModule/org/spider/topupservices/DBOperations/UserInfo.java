@@ -110,6 +110,7 @@ public class UserInfo {
 					jsonEncoder.addElement("dpUrl", NullPointerExceptionHandler.isNullOrEmpty(rs.getString("dp_img"))?"":rs.getString("dp_img"));
 					jsonEncoder.addElement("stock_configuration", rs.getString("stock_configuration"));
 					
+					jsonEncoder.addElement("pinFlag", new Login(weTopUpDS, configurations, logWriter).isPinSet(NullPointerExceptionHandler.isNullOrEmpty(id)?"":id)?"0":"5");
 					errorCode="0";
 					errorMessage = "fetch successful.";
 				}
@@ -374,6 +375,26 @@ public class UserInfo {
 		return jsonEncoder;
 	}
 		
+	public String fetchUserPhoneByAuthToken(String userAuthToken) {
+		String retval = "";//userAuthToken fetch failure
+		
+		String sql="SELECT phone FROM users_info where user_auth_token=?";
+		this.logWriter.appendLog("userAuthToken : "+userAuthToken);
+		try {
+			weTopUpDS.prepareStatement(sql);
+			weTopUpDS.getPreparedStatement().setString(1, userAuthToken);
+			
+			ResultSet rs = weTopUpDS.executeQuery();
+			if (rs.next()) {
+				retval = rs.getString("phone");
+				this.logWriter.appendLog("phone : "+retval);
+			}
+		}catch(Exception e) {
+			e.printStackTrace();
+		}
+		return retval;
+	}
+	
 	/**
 	 * 
 	 * @param user_id

@@ -95,14 +95,14 @@ public class Login {
 	 * -2:General Error at compareCredentialsInDB()
 	 * -1: user not activated.
 	 */
-	public JsonEncoder compareCredentialsInDB(String loginCredential, String password, String pin, String gtoken) {
+	public JsonEncoder compareCredentialsInDB(String loginCredential, String password, String pin, String gtoken, String userAuthToken) {
 		int retval=-2;
 		JsonEncoder jsonEncoder = new JsonEncoder();
 		String errorCode="-2";//default errorCode
 		String errorMessage = "user not found.";
 		String email = "";
 		String sql="select count(*) as counter, min(status) as status from users_info "
-				+ "where (user_email=? or phone=?) and (passwd_enc=AES_ENCRYPT(?,concat_ws('',?,key_seed,key_seed,key_seed)) or (pin=? and pin_retry_count<(SELECT config_value FROM configurations where id = 1)))";
+				+ "where (user_email=? or phone=?) and (passwd_enc=AES_ENCRYPT(?,concat_ws('',?,key_seed,key_seed,key_seed)) or (user_auth_token=? and user_auth_token IS NOT NULL and user_auth_token NOT IN ('')) or (pin IS NOT NULL and pin NOT IN ('') and pin=? and pin_retry_count<(SELECT config_value FROM configurations where id = 1)))";
 		if(!NullPointerExceptionHandler.isNullOrEmpty(gtoken)) {
 //			boolean isValid = new GTokenVerifier().verifyGToken(gtoken);
 			
@@ -151,7 +151,8 @@ public class Login {
 			weTopUpDS.getPreparedStatement().setString(2, this.msisdnNormalize(loginCredential));
 			weTopUpDS.getPreparedStatement().setString(3, NullPointerExceptionHandler.isNullOrEmpty(password)?"":password);
 			weTopUpDS.getPreparedStatement().setString(4, SecretKey.SECRETKEY);
-			weTopUpDS.getPreparedStatement().setString(5, NullPointerExceptionHandler.isNullOrEmpty(pin)?"":pin);
+			weTopUpDS.getPreparedStatement().setString(5, NullPointerExceptionHandler.isNullOrEmpty(userAuthToken)?"":userAuthToken);
+			weTopUpDS.getPreparedStatement().setString(6, NullPointerExceptionHandler.isNullOrEmpty(pin)?"":pin);
 			ResultSet rs = weTopUpDS.executeQuery();
 			
 			if(rs.next()) {
@@ -497,13 +498,83 @@ public class Login {
 		return jsonEncoder;
 	}
 	
-	public JsonEncoder checkUserInDB(String loginCredential) {
-		String userFlag="-2";
-		String userStatus="-1";
+	public JsonEncoder requestUserToken(String msisdn) {
+		String userAuthToken = "";
 		JsonEncoder jsonEncoder = new JsonEncoder();
 		String errorCode="-2";//default errorCode
 		String errorMessage = "user not found.";
-		String sql="select count(*) as counter, CASE WHEN max(status) IS NULL THEN 0 ELSE max(status) END AS status from users_info where user_email=? or phone=?";
+		
+		if (NullPointerExceptionHandler.isNullOrEmpty(msisdn)) {
+			errorCode = "5";
+			errorMessage = "Missing one or more parameters";
+		} else {
+			JsonDecoder ckUser = new JsonDecoder(checkUserInDB(msisdn).getJsonObject().toString());
+			
+			
+			if(ckUser.getEString("ErrorCode").equals("0")) {
+				if(ckUser.getEString("userFlag").equals("0")) { //	user not found
+				
+					this.logWriter.appendLog("user not found.");
+					
+					JsonDecoder userInfo = new JsonDecoder("{\"phone\":\""+msisdn+"\"}") ;
+					
+					JsonDecoder regUser = new JsonDecoder(new UserRegistration(this.weTopUpDS,this.logWriter,this.configurations).registerNewAppUser(userInfo, "kotha").getJsonObject().toString());
+					
+					if(regUser.getEString("ErrorCode").equals("0")) {
+						this.logWriter.appendLog("user registration successful.");
+						
+						userAuthToken = getUserAuthToken(msisdn);
+						
+						errorCode = "0";
+						errorMessage = "Request Successful.";
+					} else {
+						this.logWriter.appendLog("user registration failed.");
+						errorCode = "20";
+						errorMessage = "User Registration failed";
+					}
+				}else {//	user found
+					this.logWriter.appendLog("user found.");
+					if(NullPointerExceptionHandler.isNullOrEmpty(ckUser.getEString("userAuthToken"))) {
+						this.logWriter.appendLog("userAuthToken is null");
+						userAuthToken = RandomStringGenerator.getRandomString("1234567890ABEDEFGHIJKLMNOPQRSTUVWXYZ.~$@*!-abcdefghijklmnopqrstuvwxyz",24);
+						boolean updateFlag = updateUserAuthToken(msisdn, userAuthToken);
+						
+						if(!updateFlag) {
+							userAuthToken = "";
+							errorCode = "11";
+							errorMessage = "Unknown Error";
+						} else {
+							errorCode = "0";
+							errorMessage = "Request Successful.";
+						}
+						
+					} else {
+						userAuthToken = ckUser.getEString("userAuthToken");
+						errorCode = "0";
+						errorMessage = "Request Successful.";
+					}
+				}
+				
+			}
+		}
+		
+		jsonEncoder.addElement("ErrorCode", errorCode);
+		jsonEncoder.addElement("ErrorMessage", errorMessage);
+		jsonEncoder.addElement("userAuthToken", userAuthToken);
+		
+		jsonEncoder.buildJsonObject();
+		
+		return jsonEncoder;
+	}
+	
+	public JsonEncoder checkUserInDB(String loginCredential) {
+		String userFlag="-2";
+		String userStatus="-1";
+		String userAuthToken = "";
+		JsonEncoder jsonEncoder = new JsonEncoder();
+		String errorCode="-2";//default errorCode
+		String errorMessage = "user not found.";
+		String sql="select count(*) as counter, CASE WHEN max(status) IS NULL THEN 0 ELSE max(status) END AS status, CASE WHEN max(user_auth_token) IS NULL THEN '' ELSE max(user_auth_token) END AS userAuthToken from users_info where user_email=? or phone=?";
 		try {
 			weTopUpDS.prepareStatement(sql);
 			weTopUpDS.getPreparedStatement().setString(1, loginCredential);
@@ -513,15 +584,19 @@ public class Login {
 			while (rs.next()) {
 				userFlag=rs.getString(1);
 				userStatus=rs.getString(2);
+				userAuthToken=rs.getString(3);
 				errorCode="0";
 				errorMessage = "checked user successfully.";
+				
 				jsonEncoder.addElement("pinFlag", isPinSet(loginCredential)?"0":"5");
+				jsonEncoder.addElement("userAuthToken", userAuthToken);
 			}
 			weTopUpDS.closeResultSet();
 			weTopUpDS.closePreparedStatement();
 			if(userStatus.equals("10")) {
 				errorCode="50";
 				errorMessage = "User is blocked.";
+				this.logWriter.appendLog("user is blocked.");
 			}
 		}catch(NullPointerException e) {
 			errorCode="-5";//default errorCode
@@ -1101,6 +1176,31 @@ public class Login {
 		}
 		
 		return count;
+	}
+	
+	public boolean updateUserAuthToken(String msisdn, String authKey) {
+		boolean flag = false;
+		String sql = "UPDATE users_info t SET user_auth_token = ? WHERE t.phone=? and t.user_id > 0";
+
+		try {
+			weTopUpDS.prepareStatement(sql);
+			weTopUpDS.getPreparedStatement().setString(1, authKey);
+			weTopUpDS.getPreparedStatement().setString(2, this.msisdnNormalize(msisdn));
+			
+			long updateCount = weTopUpDS.executeUpdate();
+			weTopUpDS.closePreparedStatement();
+			
+			if(updateCount>0) {
+				this.logWriter.appendLog("userAuthToken Update Successful : " + msisdn + " " +authKey);
+				flag = true;
+			}else {
+				this.logWriter.appendLog("userAuthToken Update Failed");
+			}
+		} catch (SQLException e) {
+			LogWriter.LOGGER.severe(e.getMessage());
+		}
+
+		return flag;
 	}
 	
 	public boolean updateUser(String email, String OTP) {
@@ -2117,5 +2217,40 @@ public class Login {
 		}
 		
 		return keySeed;
+	}
+	
+	public String getUserAuthToken(String phone) {
+		String userAuthToken = "";
+		String sql="select t.user_auth_token from users_info t where  t.phone=?";
+		try {
+			weTopUpDS.prepareStatement(sql);
+			weTopUpDS.getPreparedStatement().setString(1, this.msisdnNormalize(phone));
+			
+			ResultSet rs = weTopUpDS.executeQuery();
+			while (rs.next()) {
+				userAuthToken = rs.getString(1);
+			}
+			weTopUpDS.closeResultSet();
+			weTopUpDS.closePreparedStatement();
+		}catch(NullPointerException e) {
+			LogWriter.LOGGER.severe(e.getMessage());
+		}
+		catch(Exception e){
+			if(weTopUpDS.getConnection() != null) {
+				try {
+					weTopUpDS.closeResultSet();
+				} catch (SQLException e1) {
+					LogWriter.LOGGER.severe(e1.getMessage());
+				}
+				try {
+					weTopUpDS.closePreparedStatement();
+				} catch (SQLException e1) {
+					LogWriter.LOGGER.severe(e1.getMessage());
+				}
+			}
+			LogWriter.LOGGER.severe(e.getMessage());
+		}
+		
+		return userAuthToken;
 	}
 }

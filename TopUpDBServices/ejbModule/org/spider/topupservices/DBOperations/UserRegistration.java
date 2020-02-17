@@ -179,9 +179,9 @@ public class UserRegistration {
 		//user_name, phone, user_email, user_type, password
 		
 		String sqlInsertusers_info="INSERT INTO users_info("
-				+ "user_name,user_email,user_type,status,phone,key_seed,api_key_seed,passwd_enc)" 
+				+ "user_auth_token,user_name,user_email,user_type,status,phone,key_seed,api_key_seed,passwd_enc)" 
 				+ "VALUES" 
-				+ "(?,?,'1',1,?,?,?,AES_ENCRYPT(?,concat_ws('',?,?,?,?)))";
+				+ "(?,?,?,'1',1,?,?,?,AES_ENCRYPT(?,concat_ws('',?,?,?,?)))";
 
 		String userId="-1";
 		try {
@@ -189,16 +189,19 @@ public class UserRegistration {
 			weTopUpDS.prepareStatement(sqlInsertusers_info,true);
 			String keySeed=jsonDecoder.getJsonObject().getString("email")+this.msisdnNormalize(jsonDecoder.getEString("phone"));
 			String apiKeySeed = RandomStringGenerator.getRandomString("0123456789abcdefghijkl@.mnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",24);
-			weTopUpDS.getPreparedStatement().setString(1, jsonDecoder.getJsonObject().getString("username"));
-			weTopUpDS.getPreparedStatement().setString(2, email);
-			weTopUpDS.getPreparedStatement().setString(3, phone);
-			weTopUpDS.getPreparedStatement().setString(4, keySeed);//key_seed
-			weTopUpDS.getPreparedStatement().setString(5, apiKeySeed);//api_key_seed
-			weTopUpDS.getPreparedStatement().setString(6, jsonDecoder.getJsonObject().getString("password"));//AES encrypt password
-			weTopUpDS.getPreparedStatement().setString(7, SecretKey.SECRETKEY);//key
-			weTopUpDS.getPreparedStatement().setString(8, keySeed);
+			String userAuthToken = RandomStringGenerator.getRandomString("1234567890ABEDEFGHIJKLMNOPQRSTUVWXYZ.~$@*!-abcdefghijklmnopqrstuvwxyz",24);
+			
+			weTopUpDS.getPreparedStatement().setString(1, userAuthToken);//user_auth_token
+			weTopUpDS.getPreparedStatement().setString(2, jsonDecoder.getJsonObject().getString("username"));
+			weTopUpDS.getPreparedStatement().setString(3, email);
+			weTopUpDS.getPreparedStatement().setString(4, phone);
+			weTopUpDS.getPreparedStatement().setString(5, keySeed);//key_seed
+			weTopUpDS.getPreparedStatement().setString(6, apiKeySeed);//api_key_seed
+			weTopUpDS.getPreparedStatement().setString(7, jsonDecoder.getJsonObject().getString("password"));//AES encrypt password
+			weTopUpDS.getPreparedStatement().setString(8, SecretKey.SECRETKEY);//key
 			weTopUpDS.getPreparedStatement().setString(9, keySeed);
 			weTopUpDS.getPreparedStatement().setString(10, keySeed);
+			weTopUpDS.getPreparedStatement().setString(11, keySeed);
 			boolean insertSuccess=false;
 			try{ 
 				weTopUpDS.execute();
@@ -278,7 +281,7 @@ public class UserRegistration {
 		return jsonEncoder;
 	}
 	
-	public JsonEncoder registerNewAppUser(JsonDecoder jsonDecoder) {
+	public JsonEncoder registerNewAppUser(JsonDecoder jsonDecoder, String source) {
 		JsonEncoder jsonEncoder = new JsonEncoder();
 		String errorCode="-1";//default errorCode
 		String errorMessage = "default error message.";
@@ -297,42 +300,44 @@ public class UserRegistration {
 			//user_name, phone, user_email, user_type, password
 			
 			String sqlInsertusers_info="INSERT INTO users_info("
-					+ "user_name,user_email,user_type,status,phone,key_seed,api_key_seed,passwd_enc)" 
+					+ "user_auth_token,user_name,user_email,user_type,status,phone,key_seed,api_key_seed,passwd_enc)" 
 					+ "VALUES" 
-					+ "(?,?,'1',1,?,?,?,AES_ENCRYPT(?,concat_ws('',?,?,?,?)))";
+					+ "(?,?,?,'1',1,?,?,?,AES_ENCRYPT(?,concat_ws('',?,?,?,?)))";
 
 			String userId="-1";
 			try {
 				//json: username,email,phone,password
 				weTopUpDS.prepareStatement(sqlInsertusers_info,true);
-				String keySeed = RandomStringGenerator.getRandomString("0123456789abcdefghijkl@.mnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",24);
+				String keySeed = source +"_"+ RandomStringGenerator.getRandomString("0123456789abcdefghijkl@.mnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",24);
 				String apiKeySeed = RandomStringGenerator.getRandomString("0123456789abcdefghijkl@.mnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",24);
+				String userAuthToken = RandomStringGenerator.getRandomString("1234567890ABEDEFGHIJKLMNOPQRSTUVWXYZ.~$@*!-abcdefghijklmnopqrstuvwxyz",24);
 				
+				weTopUpDS.getPreparedStatement().setString(1, userAuthToken);//user_auth_token
 				
 				if(NullPointerExceptionHandler.isNullOrEmpty(jsonDecoder.getNString("username"))) {
-					weTopUpDS.getPreparedStatement().setNull(1, Types.INTEGER);
+					weTopUpDS.getPreparedStatement().setNull(2, Types.INTEGER);
 				} else {
-					weTopUpDS.getPreparedStatement().setString(1, jsonDecoder.getNString("username"));
+					weTopUpDS.getPreparedStatement().setString(2, jsonDecoder.getNString("username"));
 				}
 				
 				if(NullPointerExceptionHandler.isNullOrEmpty(email)) {
-					weTopUpDS.getPreparedStatement().setNull(2, Types.INTEGER);
-				} else {
-					weTopUpDS.getPreparedStatement().setString(2, email);
-				}
-				if(NullPointerExceptionHandler.isNullOrEmpty(phone)) {
 					weTopUpDS.getPreparedStatement().setNull(3, Types.INTEGER);
 				} else {
-					weTopUpDS.getPreparedStatement().setString(3, phone);
+					weTopUpDS.getPreparedStatement().setString(3, email);
+				}
+				if(NullPointerExceptionHandler.isNullOrEmpty(phone)) {
+					weTopUpDS.getPreparedStatement().setNull(4, Types.INTEGER);
+				} else {
+					weTopUpDS.getPreparedStatement().setString(4, phone);
 				}
 				
-				weTopUpDS.getPreparedStatement().setString(4, keySeed);//key_seed
-				weTopUpDS.getPreparedStatement().setString(5, apiKeySeed);//api_key_seed
-				weTopUpDS.getPreparedStatement().setString(6, password);//AES encrypt password
-				weTopUpDS.getPreparedStatement().setString(7, SecretKey.SECRETKEY);//key
-				weTopUpDS.getPreparedStatement().setString(8, keySeed);
+				weTopUpDS.getPreparedStatement().setString(5, keySeed);//key_seed
+				weTopUpDS.getPreparedStatement().setString(6, apiKeySeed);//api_key_seed
+				weTopUpDS.getPreparedStatement().setString(7, password);//AES encrypt password
+				weTopUpDS.getPreparedStatement().setString(8, SecretKey.SECRETKEY);//key
 				weTopUpDS.getPreparedStatement().setString(9, keySeed);
 				weTopUpDS.getPreparedStatement().setString(10, keySeed);
+				weTopUpDS.getPreparedStatement().setString(11, keySeed);
 				boolean insertSuccess=false;
 				try{ 
 					weTopUpDS.execute();
@@ -434,35 +439,39 @@ public class UserRegistration {
 		//user_name, phone, user_email, user_type, password
 		
 		String sqlInsertusers_info="INSERT INTO users_info("
-				+ "user_name,user_email,user_type,status,phone,key_seed,api_key_seed,passwd_enc,distributor_id,address,dp_img,doc_img_01,doc_img_02,doc_img_03)" 
+				+ "user_auth_token,user_name,user_email,user_type,status,phone,key_seed,api_key_seed,passwd_enc,distributor_id,address,dp_img,doc_img_01,doc_img_02,doc_img_03)" 
 				+ "VALUES" 
-				+ "(?,?,'5',1,?,?,?,AES_ENCRYPT(?,concat_ws('',?,?,?,?)),?,?,?,?,?,?)";
+				+ "(?,?,?,'5',1,?,?,?,AES_ENCRYPT(?,concat_ws('',?,?,?,?)),?,?,?,?,?,?)";
 
 		String userId="-1";
 		
 		String keySeed = NullPointerExceptionHandler.isNullOrEmpty(jsonDecoder.getJsonObject().getString("email"))?RandomStringGenerator.getRandomString("0123456789abcdefghijkl@.mnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",10):jsonDecoder.getJsonObject().getString("email");
 		String apiKeySeed = RandomStringGenerator.getRandomString("0123456789abcdefghijkl@.mnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",24);
+		String userAuthToken = RandomStringGenerator.getRandomString("1234567890ABEDEFGHIJKLMNOPQRSTUVWXYZ.~$@*!-abcdefghijklmnopqrstuvwxyz",24);
+		
+		
 		try {
 			String rate = jsonDecoder.getJsonObject().getString("rate");
 			//json: username,email,phone,password
 			weTopUpDS.prepareStatement(sqlInsertusers_info,true);
 			keySeed = keySeed + this.msisdnNormalize(jsonDecoder.getEString("phone"));
-			weTopUpDS.getPreparedStatement().setString(1, jsonDecoder.getJsonObject().getString("username"));
-			weTopUpDS.getPreparedStatement().setString(2, jsonDecoder.getJsonObject().getString("email"));
-			weTopUpDS.getPreparedStatement().setString(3, this.msisdnNormalize(jsonDecoder.getEString("phone")));
-			weTopUpDS.getPreparedStatement().setString(4, keySeed);//key_seed
-			weTopUpDS.getPreparedStatement().setString(5, apiKeySeed);//key_seed
-			weTopUpDS.getPreparedStatement().setString(6, jsonDecoder.getJsonObject().getString("password"));
-			weTopUpDS.getPreparedStatement().setString(7, SecretKey.SECRETKEY);//key
-			weTopUpDS.getPreparedStatement().setString(8, keySeed);
+			weTopUpDS.getPreparedStatement().setString(1, userAuthToken);//user_auth_token
+			weTopUpDS.getPreparedStatement().setString(2, jsonDecoder.getJsonObject().getString("username"));
+			weTopUpDS.getPreparedStatement().setString(3, jsonDecoder.getJsonObject().getString("email"));
+			weTopUpDS.getPreparedStatement().setString(4, this.msisdnNormalize(jsonDecoder.getEString("phone")));
+			weTopUpDS.getPreparedStatement().setString(5, keySeed);//key_seed
+			weTopUpDS.getPreparedStatement().setString(6, apiKeySeed);//key_seed
+			weTopUpDS.getPreparedStatement().setString(7, jsonDecoder.getJsonObject().getString("password"));
+			weTopUpDS.getPreparedStatement().setString(8, SecretKey.SECRETKEY);//key
 			weTopUpDS.getPreparedStatement().setString(9, keySeed);
 			weTopUpDS.getPreparedStatement().setString(10, keySeed);
-			weTopUpDS.getPreparedStatement().setString(11, jsonDecoder.getJsonObject().getString("distributor_id"));
-			weTopUpDS.getPreparedStatement().setString(12, jsonDecoder.getJsonObject().getString("address"));
-			weTopUpDS.getPreparedStatement().setString(13, jsonDecoder.getJsonObject().getString("dp_img"));
-			weTopUpDS.getPreparedStatement().setString(14, jsonDecoder.getJsonObject().getString("doc_img_01"));
-			weTopUpDS.getPreparedStatement().setString(15, jsonDecoder.getJsonObject().getString("doc_img_02"));
-			weTopUpDS.getPreparedStatement().setString(16, jsonDecoder.getJsonObject().getString("doc_img_03"));
+			weTopUpDS.getPreparedStatement().setString(11, keySeed);
+			weTopUpDS.getPreparedStatement().setString(12, jsonDecoder.getJsonObject().getString("distributor_id"));
+			weTopUpDS.getPreparedStatement().setString(13, jsonDecoder.getJsonObject().getString("address"));
+			weTopUpDS.getPreparedStatement().setString(14, jsonDecoder.getJsonObject().getString("dp_img"));
+			weTopUpDS.getPreparedStatement().setString(15, jsonDecoder.getJsonObject().getString("doc_img_01"));
+			weTopUpDS.getPreparedStatement().setString(16, jsonDecoder.getJsonObject().getString("doc_img_02"));
+			weTopUpDS.getPreparedStatement().setString(17, jsonDecoder.getJsonObject().getString("doc_img_03"));
 			boolean insertSuccess=false;
 			try{ 
 				weTopUpDS.execute();

@@ -85,6 +85,31 @@ public class LoginProcessor {
 		return retval;
 	}
 	
+	public String processThirdPartyLogin(String message, String messageBody) {
+		String retval="E";
+		JsonDecoder loginCredentials;
+		if(messageBody.isEmpty()) {
+			loginCredentials=new JsonDecoder(message);
+		}else {
+			loginCredentials=new JsonDecoder(messageBody);
+		}
+		
+		if(loginCredentials.getErrorCode().equals("0")) {
+			String userAuthToken = loginCredentials.getEString("userAuthToken");
+			String phone = getUserPhoneByAuthToken(userAuthToken);
+			
+			this.logWriter.appendLog("{\"credential\":\""+phone+"\",\"userAuthToken\":\""+userAuthToken+"\"}");
+			loginCredentials=new JsonDecoder("{\"credential\":\""+phone+"\",\"userAuthToken\":\""+userAuthToken+"\"}");
+			retval=this.checkCredentials(loginCredentials);
+		}else{
+			retval="E:JSON string invalid";
+		}
+		if(new JsonDecoder(retval).getNString("ErrorCode").equals("0")) {
+			retval=this.fetchUserInfo(loginCredentials.getNString("credential"));
+		}
+		return retval;
+	}
+	
 	public String processAdminLogin(String message, String messageBody) {
 		String retval="E";
 		JsonDecoder loginCredentials;
@@ -384,6 +409,23 @@ public class LoginProcessor {
 		return retval;
 	}
 
+	public String requestUserToken(String message, String messageBody) {
+		String retval="E";
+		JsonDecoder loginCredentials;
+		if(messageBody.isEmpty()) {
+			loginCredentials=new JsonDecoder(message);
+		}else {
+			loginCredentials=new JsonDecoder(messageBody);
+		}
+		//LoginProcessor loginProcessor=new LoginProcessor();
+		if(loginCredentials.getErrorCode().equals("0")) {
+			retval=this.requestUserToken(loginCredentials);
+		}else{
+			retval="E:JSON string invalid";
+		}
+		return retval;
+	}
+	
 	public String checkUser(String message, String messageBody) {
 		String retval="E";
 		JsonDecoder loginCredentials;
@@ -728,7 +770,11 @@ public class LoginProcessor {
 	private String fetchUserEmail(String id) {
 		return new UserInfo(this.weTopUpDS,this.logWriter,this.configurations).fetchUserEmail(id).getJsonObject().toString();
 	}
-
+	
+	private String getUserPhoneByAuthToken(String userAuthToken) {
+		return new UserInfo(this.weTopUpDS,this.logWriter,this.configurations).fetchUserPhoneByAuthToken(userAuthToken);
+	}
+	
 	private String fetchUserByKey(String id) {
 		return new UserInfo(this.weTopUpDS,this.logWriter,this.configurations).fetchUserByKey(id).getJsonObject().toString();
 	}
@@ -757,7 +803,7 @@ public class LoginProcessor {
 	 */
 	public String checkCredentials(JsonDecoder loginCredentials){
 		this.logWriter.setUserId(loginCredentials.getEString("credential"));
-		return new Login(this.weTopUpDS,this.configurations,this.logWriter).compareCredentialsInDB(loginCredentials.getEString("credential"),loginCredentials.getEString("password"),loginCredentials.getEString("pin"),loginCredentials.getEString("gtoken")).getJsonObject().toString();
+		return new Login(this.weTopUpDS,this.configurations,this.logWriter).compareCredentialsInDB(loginCredentials.getEString("credential"),loginCredentials.getEString("password"),loginCredentials.getEString("pin"),loginCredentials.getEString("gtoken"),loginCredentials.getEString("userAuthToken")).getJsonObject().toString();
 	}
 
 	public String checkAdminCredentials(JsonDecoder loginCredentials){
@@ -802,6 +848,10 @@ public class LoginProcessor {
 
 	public String checkUser(JsonDecoder loginCredentials){
 		return new Login(this.weTopUpDS,this.configurations,this.logWriter).checkUserInDB(loginCredentials.getEString("username")).getJsonObject().toString();
+	}
+	
+	public String requestUserToken(JsonDecoder loginCredentials){
+		return new Login(this.weTopUpDS,this.configurations,this.logWriter).requestUserToken(loginCredentials.getEString("msisdn")).getJsonObject().toString();
 	}
 
 	public String updateUserKey(JsonDecoder loginCredentials){

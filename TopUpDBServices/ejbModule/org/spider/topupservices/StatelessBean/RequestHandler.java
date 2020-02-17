@@ -81,17 +81,7 @@ public class RequestHandler implements RequestHandlerLocal {
 		String traceON 	= 	NullPointerExceptionHandler.isNullOrEmpty(msg.getString("traceON"))?"":msg.getString("traceON");
 		String channel 	= 	NullPointerExceptionHandler.isNullOrEmpty(msg.getString("channel"))?"default":msg.getString("channel");
 		boolean isTestEnv = false;
-		this.logWriter.setChannel(channel);
-		this.logWriter.setTarget(target);
-//		this.logWriter.setSource(src);
-		this.logWriter.setAction(action);
-		this.logWriter.setStatus(0);
-		this.logWriter.appendInputParameters("m:"+message);
-		this.logWriter.appendInputParameters("b:"+messageBody);
-		this.logWriter.appendInputParameters("u:"+ (NullPointerExceptionHandler.isNullOrEmpty(msg.getString("userId"))?"":msg.getString("userId")));
-		this.logWriter.setChannel(channel);
-		this.logWriter.setTarget(target);
-		this.logWriter.setTrxID(new UserOperations(dsConn,this.logWriter,this.configurations).getTrxId(message,messageBody));
+		
 		this.configurations = configurations;
 		LogWriter.LOGGER.info("Message :"+message);
 		LogWriter.LOGGER.info("Message Body :"+messageBody);
@@ -107,6 +97,9 @@ public class RequestHandler implements RequestHandlerLocal {
 				switch(action.toUpperCase()) {
 				case "LOGIN":
 					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).processLogin(message,messageBody);
+					break;
+				case "PROCESSLOGIN":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).processThirdPartyLogin(message,messageBody);
 					break;
 				case "ADMINLOGIN":
 					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).processAdminLogin(message,messageBody);
@@ -126,6 +119,9 @@ public class RequestHandler implements RequestHandlerLocal {
 				case "REMOVERETAILER":
 					this.logWriter.setUserId(NullPointerExceptionHandler.isNullOrEmpty(msg.getString("userId"))?"":msg.getString("userId"));
 					retval=new RegistrationProcessor(dsConn,this.logWriter,this.configurations).removeRetailer(message,messageBody);
+					break;
+				case "REQUESTUSERTOKEN":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).requestUserToken(message,messageBody);
 					break;
 				case "CHECKUSER":
 					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).checkUser(message,messageBody);
@@ -375,6 +371,18 @@ public class RequestHandler implements RequestHandlerLocal {
 			LogWriter.LOGGER.info("Reply : ErrorCode =  "+new JsonDecoder(retval).getNString("ErrorCode"));
 			if(dsConn.getConnection() != null){
 				try { 
+				this.logWriter.setChannel(channel);
+				this.logWriter.setTarget(target);
+//					this.logWriter.setSource(src);
+				this.logWriter.setAction(action);
+				this.logWriter.setStatus(0);
+				this.logWriter.setInputParameters("m:"+message);
+				this.logWriter.appendInputParameters("m:"+message);
+				this.logWriter.appendInputParameters("b:"+messageBody);
+				this.logWriter.appendInputParameters("u:"+ (NullPointerExceptionHandler.isNullOrEmpty(msg.getString("userId"))?"":msg.getString("userId")));
+				this.logWriter.setChannel(channel);
+				this.logWriter.setTarget(target);
+				this.logWriter.setTrxID(new UserOperations(dsConn,this.logWriter,this.configurations).getTrxId(message,messageBody));
 				this.logWriter.setStatus(Integer.parseInt(new JsonDecoder(retval).getErrorCode())); }catch(NumberFormatException nfe) {}
 				this.logWriter.setResponse(retval);
 				this.logWriter.flush(dsConn);

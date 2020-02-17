@@ -26,7 +26,7 @@ import org.spider.topupservices.Utilities.QueueProcess;
  */
 
 //	LIVE
-/*@MessageDriven(
+@MessageDriven(
 	activationConfig = { 
 			@ActivationConfigProperty(propertyName = "destination", propertyValue = "queue/wetopupservices"), 
 			@ActivationConfigProperty(propertyName = "destinationType", propertyValue = "javax.jms.Queue"),
@@ -40,7 +40,7 @@ import org.spider.topupservices.Utilities.QueueProcess;
 	mappedName = "java:/queue/wetopupservices")/**/
 
 //	sandbox
-@MessageDriven(
+/*@MessageDriven(
 		activationConfig = { 
 				@ActivationConfigProperty(propertyName = "destination", propertyValue = "queue/wetopupservicessandbox"), 
 				@ActivationConfigProperty(propertyName = "destinationType", propertyValue = "javax.jms.Queue"),

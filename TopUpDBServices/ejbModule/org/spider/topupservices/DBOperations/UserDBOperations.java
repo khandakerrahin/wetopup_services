@@ -1827,11 +1827,18 @@ public class UserDBOperations {
 		String trx_type = "";
 		String bin_issuer_bank = "";
 		String bin_issuer_country = "";
+		
+		String to_address = email;
+		String from_address = "WeTopUp <support@we-top-up.com>";
+		String cc_address = "";
+		String bcc_address = "";
 
 		subject = fetchMailSubject(action);
 		mailbody = fetchMailBody(action);
 		
-		//LogWriter.LOGGER.info("mailbody : " + mailbody);
+		LogWriter.LOGGER.info("action : " + action);
+		
+//		LogWriter.LOGGER.info("mailbody RAW : " + mailbody);
 
 		if (action.equals("resetPassword")) {
 			mailbody = mailbody.replace("replace_key_here", key);
@@ -1903,6 +1910,44 @@ public class UserDBOperations {
 			mailbody = mailbody.replace("replace_name_here", userName);
 			mailbody = mailbody.replace("replace_trx_type_here", (trx_type.contains("0")?"topup":"stock refill"));
 			
+		} else if (action.equals("notifyTopupWithheldUser")) {
+			JsonDecoder json = new JsonDecoder(getSingleTransaction(trx_id).getJsonObject().toString());
+
+			amount = json.getNString("amount");
+			time = json.getNString("update_time");
+			userID = json.getNString("user_id"); 
+			payee_phone = json.getNString("receiver_phone");
+			payment_method = getPaymentMethod(json.getNString("payment_method"));
+			
+			mailbody = mailbody.replace("replace_payment_method_here", payment_method);
+			
+			mailbody = mailbody.replace("replace_amount_here", amount);
+			mailbody = mailbody.replace("replace_phone_here", payee_phone);
+			mailbody = mailbody.replace("replace_time_here", time);
+			mailbody = mailbody.replace("replace_trx_id_here", trx_id);
+			
+			mailbody = mailbody.replace("replace_email_here", email);
+			
+			bcc_address = "WeTopUp <support@we-top-up.com>";
+		} else if (action.equals("notifyStockWithheldUser")) {
+			JsonDecoder json = new JsonDecoder(getSingleTransaction(trx_id).getJsonObject().toString());
+
+			amount = json.getNString("amount");
+			time = json.getNString("update_time");
+			userID = json.getNString("user_id"); 
+			payee_phone = json.getNString("receiver_phone");
+			payment_method = getPaymentMethod(json.getNString("payment_method"));
+			
+			mailbody = mailbody.replace("replace_payment_method_here", payment_method);
+			
+			mailbody = mailbody.replace("replace_amount_here", amount);
+			mailbody = mailbody.replace("replace_phone_here", payee_phone);
+			mailbody = mailbody.replace("replace_time_here", time);
+			mailbody = mailbody.replace("replace_trx_id_here", trx_id);
+			
+			mailbody = mailbody.replace("replace_email_here", email);
+			
+			bcc_address = "WeTopUp <support@we-top-up.com>";
 		} else {
 			JsonDecoder json = new JsonDecoder(getSingleTransaction(trx_id).getJsonObject().toString());
 
@@ -1937,12 +1982,10 @@ public class UserDBOperations {
 			mailbody = mailbody.replace("replace_payment_method_here", payment_method);
 			mailbody = mailbody.replace("replace_payment_tool_here", "("+payment_tool+").");
 		}
-
-		String to_address = email;
-		String from_address = "WeTopUp <support@we-top-up.com>";
-		String cc_address = "";
-		String bcc_address = "";
-
+		to_address = email;
+		
+//		LogWriter.LOGGER.info("mailbody edited: " + mailbody);
+		
 		try {
 			String sqlTransactionLog = "INSERT INTO PostalServices.app_email_queues (app_name, subject, mailbody, to_address, from_address, cc_address, bcc_address) values (?, ?, ?, ?, ?, ?, ?)";
 
@@ -1976,6 +2019,9 @@ public class UserDBOperations {
 				errorMessage = "other Exception";
 				e.printStackTrace();
 			}
+			
+			
+			
 		} finally {
 			if (weTopUpDS.getConnection() != null) {
 				try {
@@ -2937,6 +2983,7 @@ public class UserDBOperations {
 		
 		LogWriter.LOGGER.info("UPDATE : trx_id : " + trx_id 
 				+ "\nstatus 				: " + status 
+				+ "\ntrx_type 				: " + trx_type 
 				+ "\nadditional_info		:	" + additional_info 
 				+ "\nLP_trx_status			:	" + LP_trx_status
 				+ "\npayment_method			:	" + payment_method 
@@ -2999,6 +3046,31 @@ public class UserDBOperations {
 					//notify admin
 					sendEmail("notifyVoid", "", "support@we-top-up.com", trx_id);
 //					sendEmail("notifyVoid", "", "shaker@spiderdxb.com", trx_id);
+					
+					String phone = getUserPhone(jd.getNString("user_id"));
+					String email = getUserEmail(jd.getNString("user_id"));
+
+					try {
+//						send email
+						if (NullPointerExceptionHandler.isNullOrEmpty(email)) {
+
+						} else {
+							String action = "";
+							if(trx_type.equals("0")) {
+								action = "notifyTopupWithheldUser";
+							} else if(trx_type.equals("1")) {
+								action = "notifyStockWithheldUser";
+							}
+							
+							new UserDBOperations(weTopUpDS, configurations, logWriter)
+							.sendEmail(action, phone, email, trx_id);
+							
+							updateEmailStatus(trx_id, "2");
+						}
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+
 					
 					
 				} else {
@@ -3174,6 +3246,10 @@ public class UserDBOperations {
 												+ getUserBalance(jd.getNString("user_id"));
 
 										balErrorMessage = "Successfully updated balance";
+										
+										updateBalTrxStatus(trx_id, "4", trx_type, commissionRate,
+												commissionAmount, creditAmount);
+
 										
 										String phone = getUserPhone(jd.getNString("user_id"));
 										String email = getUserEmail(jd.getNString("user_id"));
@@ -4388,14 +4464,16 @@ public class UserDBOperations {
 		return jsonEncoder;
 	}
 
-	public String fetchAccessKey(String operator, String test) {
+	public String fetchAccessKey(String operator, String src) {
 		String accessKey = "";
 		int accessFlag = 1;
 
 		// Operator: 0=Airtel ; 1=Robi ; 2=GrameenPhone ; 3=Banglalink ; 4=Teletalk
 
-		if (test.equals("Y")) {
+		if (src.equals("Y")) {
 
+		} else if (src.equalsIgnoreCase("kotha")) {
+			accessFlag = 6;
 		} else {
 			if (operator.equals("0") || operator.equals("1")) {
 				accessFlag = 2;
@@ -4576,17 +4654,18 @@ public class UserDBOperations {
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 
+		
 		jsonEncoder.addElement("ErrorCode", errorCode);
 		jsonEncoder.addElement("ErrorMessage", errorMessage);
 		jsonEncoder.addElement("trx_id", trx_id);
 		jsonEncoder.addElement("topup_trx_id", topup_trx_id);
 		jsonEncoder.addElement("user_id", user_id);
-		jsonEncoder.addElement("payee_phone", payee_phone);
+		jsonEncoder.addElement("payee_phone", NullPointerExceptionHandler.isNullOrEmpty(payee_phone)? "" :payee_phone);
 		jsonEncoder.addElement("amount", amount);
 		jsonEncoder.addElement("operator", operator);
 		jsonEncoder.addElement("opType", opType);
-		jsonEncoder.addElement("payee_email", payee_email);
-		jsonEncoder.addElement("remarks", remarks);
+		jsonEncoder.addElement("payee_email", NullPointerExceptionHandler.isNullOrEmpty(payee_email)? "" :payee_email);
+		jsonEncoder.addElement("remarks", NullPointerExceptionHandler.isNullOrEmpty(remarks)? "" :remarks);
 
 		jsonEncoder.buildJsonObject();
 		return jsonEncoder;
@@ -4637,12 +4716,16 @@ public class UserDBOperations {
 		jsonEncoder.addElement("topup_trx_id", topup_trx_id);
 		jsonEncoder.addElement("trx_id", trx_id);
 		jsonEncoder.addElement("user_id", user_id);
-		jsonEncoder.addElement("payee_phone", payee_phone);
+		
+		
+		jsonEncoder.addElement("payee_phone", NullPointerExceptionHandler.isNullOrEmpty(payee_phone)? "" :payee_phone);
+		
 		jsonEncoder.addElement("amount", amount);
 		jsonEncoder.addElement("operator", operator);
 		jsonEncoder.addElement("opType", opType);
-		jsonEncoder.addElement("payee_email", payee_email);
-		jsonEncoder.addElement("remarks", remarks);
+		
+		jsonEncoder.addElement("payee_email", NullPointerExceptionHandler.isNullOrEmpty(payee_email)? "" :payee_email);
+		jsonEncoder.addElement("remarks", NullPointerExceptionHandler.isNullOrEmpty(remarks)? "" :remarks);
 
 		jsonEncoder.buildJsonObject();
 		return jsonEncoder;
@@ -5390,6 +5473,7 @@ public class UserDBOperations {
 		if (NullPointerExceptionHandler.isNullOrEmpty(userID)) {
 			errorCode = "5";
 			errorMessage = "Missing one or more parameters.";
+			userID = "";
 		} else {
 			String stockConfigurations = fetchUserStockConfigurations(userID);
 			// check if Stock history allowed for user
@@ -5596,6 +5680,7 @@ public class UserDBOperations {
 		if (NullPointerExceptionHandler.isNullOrEmpty(userID)) {
 			errorCode = "5";
 			errorMessage = "Missing one or more parameters.";
+			userID = "";
 		}else {
 			String sql = "select\n" + "-- JSON_LENGTH(JSON_ARRAYAGG(t.top_up_status)) counter,\n"
 					+ "-- GROUP_CONCAT(t.top_up_status ORDER BY t.top_up_status DESC SEPARATOR ',') gc,\n"
@@ -6596,7 +6681,7 @@ public class UserDBOperations {
 		Double bal = getShadowBalance(id);
 		
 		if(bal<600) {
-			String operatorBalance = "OPCode : " + id + "\nBalance : "+bal;
+			String operatorBalance = "Operator : " + getOpNameFromOPConfig(id) + "<br>Balance : "+bal;
 			
 			//		notifyLowBalance
 			sendEmail("notifyLowBalance", "", "support@we-top-up.com", operatorBalance);
@@ -6674,6 +6759,26 @@ public class UserDBOperations {
 		} catch (SQLException e) {
 			e.printStackTrace();
 			LogWriter.LOGGER.severe(e.getMessage());
+		}
+
+		return opFlag;
+	}
+	
+	public String getOpNameFromOPConfig(String id) {
+		String opFlag = "";
+		
+		if(id.equals("1")) {
+			opFlag = "Airtel";
+		} else if(id.equals("2")) {
+			opFlag = "Robi";
+		} else if(id.equals("3")) {
+			opFlag = "Paywell";
+		} else if(id.equals("4")) {
+			opFlag = "Banglalink";
+		} else if(id.equals("5")) {
+			opFlag = "GrameenPhone";
+		} else if(id.equals("7")) {
+			opFlag = "Skitto";
 		}
 
 		return opFlag;
