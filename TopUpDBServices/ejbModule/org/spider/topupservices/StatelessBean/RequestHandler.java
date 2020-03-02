@@ -35,8 +35,8 @@ public class RequestHandler implements RequestHandlerLocal {
 
 	public Configurations configurations;
 	LogWriter logWriter;
-	String replyAddr="spidertopup";
-	String appName="spidertopup";
+	String replyAddr="wetopup";
+	String appName="wetopup";
 	String channel;
 	public RequestHandler() {
 	}
