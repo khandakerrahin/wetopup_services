@@ -731,6 +731,26 @@ public class LoginProcessor {
 		}
 		return retval;
 	}
+	
+	public String changeAdminPassword(String message, String messageBody) {
+		String retval="E";
+		JsonDecoder loginCredentials;
+		if(messageBody.isEmpty()) {
+			loginCredentials=new JsonDecoder(message);
+		}else {
+			loginCredentials=new JsonDecoder(messageBody);
+		}
+
+		if(loginCredentials.getErrorCode().equals("0")) {
+			retval=this.checkAdminCredentials(loginCredentials);
+		}else{
+			retval="E:JSON string invalid";
+		}
+		if(new JsonDecoder(retval).getEString("ErrorCode").equals("0")) {
+			retval=this.changeAdminPassword(loginCredentials);
+		}
+		return retval;
+	}
 
 	/**
 	 * 
@@ -885,7 +905,11 @@ public class LoginProcessor {
 	public String changeUserPassword(JsonDecoder loginCredentials){
 		return new Login(this.weTopUpDS,this.configurations,this.logWriter).changeUserPassword(loginCredentials.getEString("credential"),loginCredentials.getEString("newPassword")).getJsonObject().toString();
 	}
-
+	
+	public String changeAdminPassword(JsonDecoder loginCredentials){
+		return new Login(this.weTopUpDS,this.configurations,this.logWriter).changeAdminPassword(loginCredentials.getEString("credential"),loginCredentials.getEString("newPassword")).getJsonObject().toString();
+	}
+	
 	public String updateApiKey(JsonDecoder loginCredentials){
 		return new Login(this.weTopUpDS,this.configurations,this.logWriter).updateApiKey(loginCredentials.getEString("user_id")).getJsonObject().toString();
 	}

@@ -1,8 +1,10 @@
 package org.spider.topupservices.DBOperations;
 
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
+import java.sql.Statement;
 import java.sql.Types;
 
 import org.spider.topupservices.DataSources.WeTopUpDS;
@@ -81,22 +83,15 @@ public class UserRegistration {
 		double balance=0.0;
 		String sql="INSERT INTO user_balance (user_id,balance) VALUES (?, ?)";
 		try {
-			weTopUpDS.prepareStatement(sql,true);
-			weTopUpDS.getPreparedStatement().setString(1, userId);
-			weTopUpDS.getPreparedStatement().setDouble(2, balance);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, userId);
+			ps.setDouble(2, balance);
 
 			retval="0:Successfully Inserted";
-			weTopUpDS.execute();
+			ps.execute();
 		}catch(Exception e) {				
 			e.printStackTrace();
-		}finally {
-			try {
-				weTopUpDS.closePreparedStatement();
-			} catch (SQLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}			
+		}
 		return retval;		
 	}
 
@@ -110,22 +105,15 @@ public class UserRegistration {
 		String retval= "-1";		
 		String sql="INSERT INTO commission_configurations (user_id,cash_rate) VALUES (?,?)";
 		try {
-			weTopUpDS.prepareStatement(sql,true);
-			weTopUpDS.getPreparedStatement().setString(1, userId);
-			weTopUpDS.getPreparedStatement().setString(2, rate);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, userId);
+			ps.setString(2, rate);
 			
 			retval="0:Successfully Inserted";
-			weTopUpDS.execute();
+			ps.execute();
 		}catch(Exception e) {				
 			e.printStackTrace();
-		}finally {
-			try {
-				weTopUpDS.closePreparedStatement();
-			} catch (SQLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}			
+		}
 		return retval;		
 	}
 	
@@ -139,21 +127,15 @@ public class UserRegistration {
 		String retval= "-1";		
 		String sql="INSERT INTO commission_configurations (user_id) VALUES (?)";
 		try {
-			weTopUpDS.prepareStatement(sql,true);
-			weTopUpDS.getPreparedStatement().setString(1, userId);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, userId);
 
 			retval="0:Successfully Inserted";
-			weTopUpDS.execute();
+			ps.execute();
+			ps.close();
 		}catch(Exception e) {				
 			e.printStackTrace();
-		}finally {
-			try {
-				weTopUpDS.closePreparedStatement();
-			} catch (SQLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}			
+		}
 		return retval;		
 	}
 	
@@ -186,28 +168,37 @@ public class UserRegistration {
 		String userId="-1";
 		try {
 			//json: username,email,phone,password
-			weTopUpDS.prepareStatement(sqlInsertusers_info,true);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sqlInsertusers_info, true);
 			String keySeed=jsonDecoder.getJsonObject().getString("email")+this.msisdnNormalize(jsonDecoder.getEString("phone"));
 			String apiKeySeed = RandomStringGenerator.getRandomString("0123456789abcdefghijkl@.mnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",24);
 			String userAuthToken = RandomStringGenerator.getRandomString("1234567890ABEDEFGHIJKLMNOPQRSTUVWXYZ.~$@*!-abcdefghijklmnopqrstuvwxyz",24);
 			
-			weTopUpDS.getPreparedStatement().setString(1, userAuthToken);//user_auth_token
-			weTopUpDS.getPreparedStatement().setString(2, jsonDecoder.getJsonObject().getString("username"));
-			weTopUpDS.getPreparedStatement().setString(3, email);
-			weTopUpDS.getPreparedStatement().setString(4, phone);
-			weTopUpDS.getPreparedStatement().setString(5, keySeed);//key_seed
-			weTopUpDS.getPreparedStatement().setString(6, apiKeySeed);//api_key_seed
-			weTopUpDS.getPreparedStatement().setString(7, jsonDecoder.getJsonObject().getString("password"));//AES encrypt password
-			weTopUpDS.getPreparedStatement().setString(8, SecretKey.SECRETKEY);//key
-			weTopUpDS.getPreparedStatement().setString(9, keySeed);
-			weTopUpDS.getPreparedStatement().setString(10, keySeed);
-			weTopUpDS.getPreparedStatement().setString(11, keySeed);
+			ps.setString(1, userAuthToken);//user_auth_token
+			ps.setString(2, jsonDecoder.getJsonObject().getString("username"));
+			ps.setString(3, email);
+			ps.setString(4, phone);
+			ps.setString(5, keySeed);//key_seed
+			ps.setString(6, apiKeySeed);//api_key_seed
+			ps.setString(7, jsonDecoder.getJsonObject().getString("password"));//AES encrypt password
+			ps.setString(8, SecretKey.SECRETKEY);//key
+			ps.setString(9, keySeed);
+			ps.setString(10, keySeed);
+			ps.setString(11, keySeed);
 			boolean insertSuccess=false;
 			try{ 
-				weTopUpDS.execute();
+				ps.execute();
 				insertSuccess=true;
 				
-				userId=getUserId();
+//				userId=getUserId();
+				
+				ResultSet rs = ps.getGeneratedKeys();
+				
+				if (rs.next()) {
+					userId =rs.getString(1);
+				}
+				rs.close();
+				ps.close();
+				
 				if(!userId.equalsIgnoreCase("-1")) { //not -1 means user created successfully
 					//insertToCustomerBalanceTable(userId);
 					insertToTblChargingTable(userId);
@@ -307,43 +298,49 @@ public class UserRegistration {
 			String userId="-1";
 			try {
 				//json: username,email,phone,password
-				weTopUpDS.prepareStatement(sqlInsertusers_info,true);
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sqlInsertusers_info,true);
 				String keySeed = source +"_"+ RandomStringGenerator.getRandomString("0123456789abcdefghijkl@.mnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",24);
 				String apiKeySeed = RandomStringGenerator.getRandomString("0123456789abcdefghijkl@.mnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",24);
 				String userAuthToken = RandomStringGenerator.getRandomString("1234567890ABEDEFGHIJKLMNOPQRSTUVWXYZ.~$@*!-abcdefghijklmnopqrstuvwxyz",24);
 				
-				weTopUpDS.getPreparedStatement().setString(1, userAuthToken);//user_auth_token
+				ps.setString(1, userAuthToken);//user_auth_token
 				
 				if(NullPointerExceptionHandler.isNullOrEmpty(jsonDecoder.getNString("username"))) {
-					weTopUpDS.getPreparedStatement().setNull(2, Types.INTEGER);
+					ps.setNull(2, Types.INTEGER);
 				} else {
-					weTopUpDS.getPreparedStatement().setString(2, jsonDecoder.getNString("username"));
+					ps.setString(2, jsonDecoder.getNString("username"));
 				}
 				
 				if(NullPointerExceptionHandler.isNullOrEmpty(email)) {
-					weTopUpDS.getPreparedStatement().setNull(3, Types.INTEGER);
+					ps.setNull(3, Types.INTEGER);
 				} else {
-					weTopUpDS.getPreparedStatement().setString(3, email);
+					ps.setString(3, email);
 				}
 				if(NullPointerExceptionHandler.isNullOrEmpty(phone)) {
-					weTopUpDS.getPreparedStatement().setNull(4, Types.INTEGER);
+					ps.setNull(4, Types.INTEGER);
 				} else {
-					weTopUpDS.getPreparedStatement().setString(4, phone);
+					ps.setString(4, phone);
 				}
 				
-				weTopUpDS.getPreparedStatement().setString(5, keySeed);//key_seed
-				weTopUpDS.getPreparedStatement().setString(6, apiKeySeed);//api_key_seed
-				weTopUpDS.getPreparedStatement().setString(7, password);//AES encrypt password
-				weTopUpDS.getPreparedStatement().setString(8, SecretKey.SECRETKEY);//key
-				weTopUpDS.getPreparedStatement().setString(9, keySeed);
-				weTopUpDS.getPreparedStatement().setString(10, keySeed);
-				weTopUpDS.getPreparedStatement().setString(11, keySeed);
+				ps.setString(5, keySeed);//key_seed
+				ps.setString(6, apiKeySeed);//api_key_seed
+				ps.setString(7, password);//AES encrypt password
+				ps.setString(8, SecretKey.SECRETKEY);//key
+				ps.setString(9, keySeed);
+				ps.setString(10, keySeed);
+				ps.setString(11, keySeed);
 				boolean insertSuccess=false;
 				try{ 
-					weTopUpDS.execute();
+					ps.execute();
 					insertSuccess=true;
 					
-					userId=getUserId();
+//					userId=getUserId();
+					ResultSet rs = ps.getGeneratedKeys();
+					if (rs.next()) {
+						userId =rs.getString(1);
+					}
+					rs.close();
+					
 					if(!userId.equalsIgnoreCase("-1")) { //not -1 means user created successfully
 						//insertToCustomerBalanceTable(userId);
 						insertToTblChargingTable(userId);
@@ -382,6 +379,7 @@ public class UserRegistration {
 					this.logWriter.appendLog("rs:SE");
 					this.logWriter.appendAdditionalInfo("UserReg.registerNewUser():"+e.getMessage());
 				}
+				ps.close();
 				LogWriter.LOGGER.info("UserID:"+userId);
 				
 			}catch(SQLException e){
@@ -453,31 +451,38 @@ public class UserRegistration {
 		try {
 			String rate = jsonDecoder.getJsonObject().getString("rate");
 			//json: username,email,phone,password
-			weTopUpDS.prepareStatement(sqlInsertusers_info,true);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sqlInsertusers_info, true);
 			keySeed = keySeed + this.msisdnNormalize(jsonDecoder.getEString("phone"));
-			weTopUpDS.getPreparedStatement().setString(1, userAuthToken);//user_auth_token
-			weTopUpDS.getPreparedStatement().setString(2, jsonDecoder.getJsonObject().getString("username"));
-			weTopUpDS.getPreparedStatement().setString(3, jsonDecoder.getJsonObject().getString("email"));
-			weTopUpDS.getPreparedStatement().setString(4, this.msisdnNormalize(jsonDecoder.getEString("phone")));
-			weTopUpDS.getPreparedStatement().setString(5, keySeed);//key_seed
-			weTopUpDS.getPreparedStatement().setString(6, apiKeySeed);//key_seed
-			weTopUpDS.getPreparedStatement().setString(7, jsonDecoder.getJsonObject().getString("password"));
-			weTopUpDS.getPreparedStatement().setString(8, SecretKey.SECRETKEY);//key
-			weTopUpDS.getPreparedStatement().setString(9, keySeed);
-			weTopUpDS.getPreparedStatement().setString(10, keySeed);
-			weTopUpDS.getPreparedStatement().setString(11, keySeed);
-			weTopUpDS.getPreparedStatement().setString(12, jsonDecoder.getJsonObject().getString("distributor_id"));
-			weTopUpDS.getPreparedStatement().setString(13, jsonDecoder.getJsonObject().getString("address"));
-			weTopUpDS.getPreparedStatement().setString(14, jsonDecoder.getJsonObject().getString("dp_img"));
-			weTopUpDS.getPreparedStatement().setString(15, jsonDecoder.getJsonObject().getString("doc_img_01"));
-			weTopUpDS.getPreparedStatement().setString(16, jsonDecoder.getJsonObject().getString("doc_img_02"));
-			weTopUpDS.getPreparedStatement().setString(17, jsonDecoder.getJsonObject().getString("doc_img_03"));
+			ps.setString(1, userAuthToken);//user_auth_token
+			ps.setString(2, jsonDecoder.getJsonObject().getString("username"));
+			ps.setString(3, jsonDecoder.getJsonObject().getString("email"));
+			ps.setString(4, this.msisdnNormalize(jsonDecoder.getEString("phone")));
+			ps.setString(5, keySeed);//key_seed
+			ps.setString(6, apiKeySeed);//key_seed
+			ps.setString(7, jsonDecoder.getJsonObject().getString("password"));
+			ps.setString(8, SecretKey.SECRETKEY);//key
+			ps.setString(9, keySeed);
+			ps.setString(10, keySeed);
+			ps.setString(11, keySeed);
+			ps.setString(12, jsonDecoder.getJsonObject().getString("distributor_id"));
+			ps.setString(13, jsonDecoder.getJsonObject().getString("address"));
+			ps.setString(14, jsonDecoder.getJsonObject().getString("dp_img"));
+			ps.setString(15, jsonDecoder.getJsonObject().getString("doc_img_01"));
+			ps.setString(16, jsonDecoder.getJsonObject().getString("doc_img_02"));
+			ps.setString(17, jsonDecoder.getJsonObject().getString("doc_img_03"));
 			boolean insertSuccess=false;
 			try{ 
-				weTopUpDS.execute();
+				ps.execute();
 				insertSuccess=true;
 				
-				userId=getUserId();
+//				userId=getUserId();
+				ResultSet rs = ps.getGeneratedKeys();
+				if (rs.next()) {
+					userId =rs.getString(1);
+				}
+				rs.close();
+				ps.close();
+				
 				if(!userId.equalsIgnoreCase("-1")) { //not -1 means user created successfully
 					//insertToCustomerBalanceTable(userId);
 					insertToTblChargingTable(userId,rate);
@@ -542,11 +547,11 @@ public class UserRegistration {
 		String sql = "UPDATE `transaction_log` SET trx_status =? and additional_info =? WHERE trx_id=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, user_id);
-			weTopUpDS.getPreparedStatement().setString(2, phone);
-			weTopUpDS.execute();
-			weTopUpDS.closePreparedStatement();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, user_id);
+			ps.setString(2, phone);
+			ps.execute();
+			ps.close();
 			errorCode = "0";
 			errorMessage = "Update successful.";
 		} catch (SQLException e) {
@@ -578,12 +583,13 @@ public class UserRegistration {
 	private String getUserIdFromSequence(WeTopUpDS weTopUpDS) throws SQLException {
 		String retval="-1";
 		String sqlSequence="SELECT LAST_INSERT_ID()";
-		weTopUpDS.prepareStatement(sqlSequence);
-		ResultSet rs=weTopUpDS.executeQuery();
+		PreparedStatement ps = weTopUpDS.newPrepareStatement(sqlSequence);
+		ResultSet rs=ps.executeQuery();
 		if(rs.next()) {
 			retval=rs.getString(1);
 		}
-		weTopUpDS.closePreparedStatement();		
+		rs.close();
+		ps.close();		
 		return retval;
 	}
 

@@ -63,6 +63,10 @@ public class UserOperations {
 		return new UserDBOperations(weTopUpDS,configurations,logWriter).getOffers(operator,flag, lastUpdateTime).getJsonObject().toString();
 	}
 	
+	public String getConfigs(String lastUpdateTime) {
+		return new UserDBOperations(weTopUpDS,configurations,logWriter).getConfigs(lastUpdateTime).getJsonObject().toString();
+	}
+	
 	public String sendEmail(String action,String key,String email,String trx_id) {
 		return new UserDBOperations(weTopUpDS,configurations,logWriter).sendEmail(action,key,email,trx_id).getJsonObject().toString();
 	}
@@ -87,8 +91,8 @@ public class UserOperations {
 		return new UserDBOperations(weTopUpDS,configurations,logWriter).requestPendingTrxUser(trx_id, jsonReq).getJsonObject().toString();
 	}
 	
-	public String updatePayStatus(String trx_id, String status,String additional_info,String trx_type, String LP_trx_status,String payment_status, String card_brand, String card_number, String bank, String bkash_payment_number, String billing_name, String card_region, String binIssuerCountry, String binIssuerBank) {
-		return new UserDBOperations(weTopUpDS,configurations,logWriter).updateTransactionStatus(trx_id, status,additional_info,trx_type,LP_trx_status,payment_status,card_brand, card_number, bank, bkash_payment_number, billing_name, card_region, binIssuerCountry, binIssuerBank).getJsonObject().toString();
+	public String updatePayStatus(String trx_id, String status,String additional_info, String LP_trx_status,String payment_status, String card_brand, String card_number, String bank, String bkash_payment_number, String billing_name, String card_region, String binIssuerCountry, String binIssuerBank) {
+		return new UserDBOperations(weTopUpDS,configurations,logWriter).updateTransactionStatus(trx_id, status,additional_info,LP_trx_status,payment_status,card_brand, card_number, bank, bkash_payment_number, billing_name, card_region, binIssuerCountry, binIssuerBank).getJsonObject().toString();
 	}
 	
 	public String getStatus(String userID, String trx_id, String user_trx_id) {
@@ -117,6 +121,14 @@ public class UserOperations {
 	
 	public String fetchTrxHistory(String userID, String userType,String phone) {
 		return new UserDBOperations(weTopUpDS,configurations,logWriter).fetchTrxHistory(userID,userType,phone).getJsonObject().toString();
+	}
+	
+	public String fetchTransactionReportAdmin(String userID, String source,String reportType, String startDate, String endDate) {
+		return new UserDBOperations(weTopUpDS,configurations,logWriter).fetchTrxHistoryAdmin(userID,source,reportType, startDate, endDate).getJsonObject().toString();
+	}
+	
+	public String fetchTransactionSummaryAdmin(String userID, String source,String reportType, String startDate, String endDate) {
+		return new UserDBOperations(weTopUpDS,configurations,logWriter).fetchTrxSummaryAdmin(userID,source,reportType, startDate, endDate).getJsonObject().toString();
 	}
 	
 	public String fetchStocksHistory(String userID, String startDate, String endDate) {
@@ -516,7 +528,7 @@ public class UserOperations {
 			json = new JsonDecoder(messageBody);
 		}
 		if (json.getErrorCode().equals("0")) {
-			retval = updatePayStatus(json.getNString("trx_id"), json.getEString("status"), json.getNString("additional_info"),json.getNString("trx_type"),
+			retval = updatePayStatus(json.getNString("trx_id"), json.getEString("status"), json.getNString("additional_info"),
 					json.getEString("LP_trx_status"),json.getNString("payment_method"),json.getEString("card_brand"),json.getNString("card_number"),
 					json.getNString("bank"),json.getNString("bkash_payment_number"),json.getNString("billing_name"),json.getEString("card_region"),json.getEString("binIssuerCountry"),json.getEString("binIssuerBank"));
 		} else {
@@ -653,6 +665,38 @@ public class UserOperations {
 		return retval;
 	}
 	
+	public String fetchTransactionHistoryAdmin(String message, String messageBody) {
+		String retval = "E";
+		JsonDecoder json;
+		if (messageBody.isEmpty()) {
+			json = new JsonDecoder(message);
+		} else {
+			json = new JsonDecoder(messageBody);
+		}
+		if (json.getErrorCode().equals("0")) {
+			retval = fetchTransactionReportAdmin(json.getNString("userID"),json.getNString("source"),json.getNString("reportType"),json.getEString("startDate"),json.getEString("endDate"));
+		} else {
+			retval = "E:JSON string invalid";
+		}
+		return retval;
+	}
+	
+	public String fetchTransactionSummaryAdmin(String message, String messageBody) {
+		String retval = "E";
+		JsonDecoder json;
+		if (messageBody.isEmpty()) {
+			json = new JsonDecoder(message);
+		} else {
+			json = new JsonDecoder(messageBody);
+		}
+		if (json.getErrorCode().equals("0")) {
+			retval = fetchTransactionSummaryAdmin(json.getNString("userID"),json.getNString("source"),json.getNString("reportType"),json.getEString("startDate"),json.getEString("endDate"));
+		} else {
+			retval = "E:JSON string invalid";
+		}
+		return retval;
+	}
+	
 	public String fetchStockHistory(String message, String messageBody) {
 		String retval = "E";
 		JsonDecoder json;
@@ -711,6 +755,25 @@ public class UserOperations {
 		}
 		if (json.getErrorCode().equals("0")) {
 			retval = checkForUpdates(json.getNString("userID"), json.getNString("appVersion"));
+		} else {
+			retval = "E:JSON string invalid";
+		}
+		return retval;
+	}
+	
+	public String requestConfigurations(String message, String messageBody) {
+		String retval = "E";
+		JsonDecoder json;
+		if (messageBody.isEmpty()) {
+			json = new JsonDecoder(message);
+		} else {
+			json = new JsonDecoder(messageBody);
+		}
+		
+		if (json.getErrorCode().equals("0")) {
+			retval = getConfigs(
+				json.getEString("lastUpdateTime")
+			);
 		} else {
 			retval = "E:JSON string invalid";
 		}

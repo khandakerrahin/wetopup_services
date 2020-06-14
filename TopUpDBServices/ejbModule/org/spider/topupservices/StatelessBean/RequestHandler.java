@@ -168,6 +168,9 @@ public class RequestHandler implements RequestHandlerLocal {
 				case "CHANGEPASSWORD":
 					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).changePassword(message,messageBody);
 					break;
+				case "CHANGEADMINPASSWORD":
+					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).changeAdminPassword(message,messageBody);
+					break;
 				case "FETCHUSERBYKEY":
 					retval=new LoginProcessor(dsConn,this.logWriter,this.configurations).fetchUserByKey(message,messageBody);
 					break;
@@ -182,6 +185,9 @@ public class RequestHandler implements RequestHandlerLocal {
 //					break;
 				case "CHECKUPDATES":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).checkUpdates(message,messageBody);
+					break;
+				case "REQUESTCONFIGURATIONS":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).requestConfigurations(message,messageBody);
 					break;
 				case "FETCHUSERCARDLIST":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchUserCardList(message,messageBody);
@@ -236,6 +242,12 @@ public class RequestHandler implements RequestHandlerLocal {
 					break;
 				case "UPDATEPAYMENTSTATUS":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).updatePaymentStatus(message,messageBody);
+					break;
+				case "FETCHTRANSACTIONADMIN":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchTransactionHistoryAdmin(message,messageBody);
+					break;
+				case "FETCHTRANSACTIONSUMMARYADMIN":
+					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchTransactionSummaryAdmin(message,messageBody);
 					break;
 				case "FETCHTRANSACTIONHISTORY":
 					retval=new UserOperations(dsConn,this.logWriter,this.configurations).fetchTransactionHistory(message,messageBody);

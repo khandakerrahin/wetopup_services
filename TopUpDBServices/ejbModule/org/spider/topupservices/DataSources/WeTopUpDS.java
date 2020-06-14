@@ -49,6 +49,10 @@ public class WeTopUpDS {
 		PreparedStatement preparedStatement=this.getConnection().prepareStatement(statement);
 		return preparedStatement;
 	}
+	public PreparedStatement newPrepareStatement(String statement,boolean returnGeneratedKeys) throws SQLException {
+		PreparedStatement preparedStatement=this.getConnection().prepareStatement(statement,PreparedStatement.RETURN_GENERATED_KEYS);
+		return preparedStatement;
+	}
 	public PreparedStatement prepareStatement(String statement,boolean returnGeneratedKeys) throws SQLException {
 		if(returnGeneratedKeys) {
 			this.preparedStatement=this.getConnection().prepareStatement(statement,PreparedStatement.RETURN_GENERATED_KEYS);

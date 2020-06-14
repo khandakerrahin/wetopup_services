@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
@@ -154,20 +155,22 @@ public class UserDBOperations {
 				// params
 				// "user_id":"2441139","operator":"Airtel","opType":"0","payee_name":"shaker","payee_phone":"+8801751501178","payee_email":"shaker@spiderdxb.com","amount":"100","trx_id":"TRX2441139","remarks":"this
 				// is just a test"
+				
+				PreparedStatement ps = null;
 				try {
-					weTopUpDS.prepareStatement(sqlTransactionLog, true);
-					weTopUpDS.getPreparedStatement().setString(1, user_id);
-					weTopUpDS.getPreparedStatement().setString(2, operator);
-					weTopUpDS.getPreparedStatement().setString(3, opType);
-					weTopUpDS.getPreparedStatement().setString(4, payee_name);
-					weTopUpDS.getPreparedStatement().setString(5, msisdnNormalize(payee_phone));
-					weTopUpDS.getPreparedStatement().setString(6, payee_email);
-					weTopUpDS.getPreparedStatement().setString(7, amount);
-					weTopUpDS.getPreparedStatement().setString(8, trx_id);
-					weTopUpDS.getPreparedStatement().setString(9, topup_trx_id);
-					weTopUpDS.getPreparedStatement().setString(10, remarks);
+					ps = weTopUpDS.newPrepareStatement(sqlTransactionLog);
+					ps.setString(1, user_id);
+					ps.setString(2, operator);
+					ps.setString(3, opType);
+					ps.setString(4, payee_name);
+					ps.setString(5, msisdnNormalize(payee_phone));
+					ps.setString(6, payee_email);
+					ps.setString(7, amount);
+					ps.setString(8, trx_id);
+					ps.setString(9, topup_trx_id);
+					ps.setString(10, remarks);
 
-					weTopUpDS.execute();
+					ps.execute();
 
 					errorCode = "0";
 
@@ -183,17 +186,11 @@ public class UserDBOperations {
 					errorCode = "10"; // :other Exception
 					e.printStackTrace();
 				}
-			} finally {
-				if (weTopUpDS.getConnection() != null) {
-					try {
-						weTopUpDS.closePreparedStatement();
-						// weTopUpDS.getConnection().close();
-					} catch (SQLException e) {
-						errorCode = "-4"; // :connection close Exception
-						e.printStackTrace();
-						LogWriter.LOGGER.severe(e.getMessage());
-					}
-				}
+				ps.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+				errorCode = "10"; // :other Exception
+				e.printStackTrace();
 			}
 			// LogWriter.LOGGER.info("UserID:"+userId);
 
@@ -216,13 +213,18 @@ public class UserDBOperations {
 			String sqlInsert = "INSERT INTO topup_file_info(file_name,updated_file_name,user_id) VALUES (?,?,?)";
 			try {
 				// json: file_name,school_id
-				weTopUpDS.prepareStatement(sqlInsert, true);
-				weTopUpDS.getPreparedStatement().setString(1, filename);
-				weTopUpDS.getPreparedStatement().setString(2, updated_filename);
-				weTopUpDS.getPreparedStatement().setString(3, user_id);
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sqlInsert, true);
+				ps.setString(1, filename);
+				ps.setString(2, updated_filename);
+				ps.setString(3, user_id);
 				try {
-					weTopUpDS.execute();
-					fileID = getNewInsertID();
+					ps.execute();
+//					fileID = getNewInsertID();
+					ResultSet rs = ps.getGeneratedKeys();
+					if (rs.next()) {
+						fileID = rs.getString(1);
+					}
+					rs.close();
 					errorCode = "0";
 					errorMessage = "upload successful.";
 					LogWriter.LOGGER.info("fileID : " + fileID);
@@ -235,8 +237,7 @@ public class UserDBOperations {
 					errorMessage = "SQLException";
 					LogWriter.LOGGER.severe("SQLException" + e.getMessage());
 				}
-				if (weTopUpDS.getConnection() != null)
-					weTopUpDS.closePreparedStatement();
+				ps.close();
 			} catch (SQLException e) {
 				errorCode = "-2";
 				errorMessage = "SQLException";
@@ -280,15 +281,15 @@ public class UserDBOperations {
 			String sqlInsert = "insert into quick_recharges (user_id, phone, operator, opType, amount, remarks) values (?, ?, ?, ?, ?, ?)";
 			try {
 				// json: file_name,school_id
-				weTopUpDS.prepareStatement(sqlInsert, true);
-				weTopUpDS.getPreparedStatement().setInt(1, Integer.parseInt(userID));
-				weTopUpDS.getPreparedStatement().setString(2, phone);
-				weTopUpDS.getPreparedStatement().setString(3, operator);
-				weTopUpDS.getPreparedStatement().setString(4, opType);
-				weTopUpDS.getPreparedStatement().setString(5, amount);
-				weTopUpDS.getPreparedStatement().setString(6, remarks);
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sqlInsert);
+				ps.setInt(1, Integer.parseInt(userID));
+				ps.setString(2, phone);
+				ps.setString(3, operator);
+				ps.setString(4, opType);
+				ps.setString(5, amount);
+				ps.setString(6, remarks);
 				try {
-					weTopUpDS.execute();
+					ps.execute();
 					errorCode = "0";
 					errorMessage = "quick recharge creation successful.";
 				} catch (SQLIntegrityConstraintViolationException de) {
@@ -300,8 +301,7 @@ public class UserDBOperations {
 					errorMessage = "SQLException";
 					LogWriter.LOGGER.severe("SQLException" + e.getMessage());
 				}
-				if (weTopUpDS.getConnection() != null)
-					weTopUpDS.closePreparedStatement();
+				ps.close();
 			} catch (SQLException e) {
 				errorCode = "-2";
 				errorMessage = "SQLException";
@@ -334,17 +334,17 @@ public class UserDBOperations {
 		} else {
 			try {
 				if(flag.equals("0")) {	//	flag = 0 for update
-					weTopUpDS.prepareStatement(sqlUpdate,true);
-					weTopUpDS.getPreparedStatement().setString(1, phone);
-					weTopUpDS.getPreparedStatement().setString(2, operator);
-					weTopUpDS.getPreparedStatement().setString(3, opType);
-					weTopUpDS.getPreparedStatement().setString(4, amount);
-					weTopUpDS.getPreparedStatement().setString(5, remarks);
-					weTopUpDS.getPreparedStatement().setInt(6, Integer.parseInt(userID));
-					weTopUpDS.getPreparedStatement().setInt(7, Integer.parseInt(quickID));
+					PreparedStatement ps = weTopUpDS.newPrepareStatement(sqlUpdate);
+					ps.setString(1, phone);
+					ps.setString(2, operator);
+					ps.setString(3, opType);
+					ps.setString(4, amount);
+					ps.setString(5, remarks);
+					ps.setInt(6, Integer.parseInt(userID));
+					ps.setInt(7, Integer.parseInt(quickID));
 					
-					long count = weTopUpDS.executeUpdate();
-					weTopUpDS.closePreparedStatement();
+					long count = ps.executeUpdate();
+					ps.close();
 					if(count>0) {
 						errorCode = "0";
 						errorMessage = "modification successful.";
@@ -353,12 +353,12 @@ public class UserDBOperations {
 						errorMessage = "modification failed";
 					}
 				}else if(flag.equals("1")) {//	flag = 1 for delete
-					weTopUpDS.prepareStatement(sqlDisable,true);
-					weTopUpDS.getPreparedStatement().setInt(1, Integer.parseInt(userID));
-					weTopUpDS.getPreparedStatement().setInt(2, Integer.parseInt(quickID));
+					PreparedStatement ps = weTopUpDS.newPrepareStatement(sqlDisable);
+					ps.setInt(1, Integer.parseInt(userID));
+					ps.setInt(2, Integer.parseInt(quickID));
 					
-					long count = weTopUpDS.executeUpdate();
-					weTopUpDS.closePreparedStatement();
+					long count = ps.executeUpdate();
+					ps.close();
 					if(count>0) {
 						errorCode = "0";
 						errorMessage = "modification successful.";
@@ -398,9 +398,9 @@ public class UserDBOperations {
 			
 						
 			try {
-				weTopUpDS.prepareStatement(sql);
-				weTopUpDS.getPreparedStatement().setInt(1, Integer.parseInt(userID));
-				ResultSet rs = weTopUpDS.executeQuery();
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+				ps.setInt(1, Integer.parseInt(userID));
+				ResultSet rs = ps.executeQuery();
 				while (rs.next()) {
 					quickRecharges += rs.getString(1) + ",";
 					quickRecharges += rs.getString(2) + ",";
@@ -419,7 +419,7 @@ public class UserDBOperations {
 				errorMessage = "getQuickRecharge successful";
 
 				rs.close();
-				weTopUpDS.closePreparedStatement();
+				ps.close();
 			} catch (SQLException e) {
 				e.printStackTrace();
 				errorCode = "11";
@@ -458,8 +458,8 @@ public class UserDBOperations {
 				
 							
 				try {
-					weTopUpDS.prepareStatement(sql);
-					ResultSet rs = weTopUpDS.executeQuery();
+					PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+					ResultSet rs = ps.executeQuery();
 					while (rs.next()) {
 						
 						offers += "\"" +rs.getString(1) + "\"" + ",";
@@ -483,7 +483,7 @@ public class UserDBOperations {
 					errorMessage = "getOffers successful";
 
 					rs.close();
-					weTopUpDS.closePreparedStatement();
+					ps.close();
 				} catch (SQLException e) {
 					e.printStackTrace();
 					errorCode = "11";
@@ -503,6 +503,55 @@ public class UserDBOperations {
 		return jsonEncoder;
 	}
 
+	public JsonEncoder getConfigs(String lastUpdateTime) {
+		JsonEncoder jsonEncoder = new JsonEncoder();
+		String errorCode = "-1";
+		String errorMessage = "General error.";
+		String configUpdateTime = "";
+		
+		if(NullPointerExceptionHandler.isNullOrEmpty(lastUpdateTime)) {
+			errorCode = "5";
+			errorMessage = "Missing one or more parameters.";
+		} else {
+			configUpdateTime = fetchLastConfigUpdateTime();
+			
+			if(configUpdateTime.equals(lastUpdateTime) && configUpdateTime!="") {
+				errorCode = "30";
+				errorMessage = "Configurations up-to-date.";
+			} else {
+				String sql = "SELECT id, config_name, config_value, update_time FROM configurations order by id desc";
+				
+							
+				try {
+					PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+					ResultSet rs = ps.executeQuery();
+					while (rs.next()) {
+						jsonEncoder.addElement(rs.getString(2), rs.getString(3));
+					}
+					
+					errorCode = "0";
+					errorMessage = "getConfigs successful";
+
+					rs.close();
+					ps.close();
+				} catch (SQLException e) {
+					e.printStackTrace();
+					errorCode = "11";
+					errorMessage = "SQL Exception.";
+					LogWriter.LOGGER.severe(e.getMessage());
+				}
+			}
+			
+		}
+
+		jsonEncoder.addElement("ErrorCode", errorCode);
+		jsonEncoder.addElement("ErrorMessage", errorMessage);
+		jsonEncoder.addElement("lastUpdateTime", configUpdateTime);
+		
+		jsonEncoder.buildJsonObject();
+		return jsonEncoder;
+	}
+	
 	/**
 	 * 
 	 * @return String groupID
@@ -560,7 +609,7 @@ public class UserDBOperations {
 //		} else if (amount.matches("[0-9]+") && (amount.length() > 1 || !trx_type.equals("0"))) {
 //		} else if (amount.matches("[0-9]+") && (amount.length() > 1)) {
 //		} else if (amount.matches("[0-9]+") && (Integer.parseInt(amount) > 9) && (Integer.parseInt(amount) <=1000 )) {
-		} else if (amount.matches("[0-9]+") && (Integer.parseInt(amount) > 9)) {
+		} else if (amount.matches("[0-9]+") && (Integer.parseInt(amount) > 8)) {
 			String stockConfigurations = fetchUserStockConfigurations(user_id);
 			
 			this.logWriter.appendLog("userStockConf:"+stockConfigurations);
@@ -835,24 +884,26 @@ public class UserDBOperations {
 								: ("u.retry_profile from users_info u where u.user_id=" + user_id));
 
 				try {
-					weTopUpDS.prepareStatement(sqlTransactionLog, true);
+					PreparedStatement ps = weTopUpDS.newPrepareStatement(sqlTransactionLog);
 					if (NullPointerExceptionHandler.isNullOrEmpty(ref_file_id)) {
-						weTopUpDS.getPreparedStatement().setString(1,null);
+						ps.setString(1,null);
 					}else {
-						weTopUpDS.getPreparedStatement().setString(1, ref_file_id);
+						ps.setString(1, ref_file_id);
 					}
 					
 					
-					weTopUpDS.getPreparedStatement().setString(2, user_id);
-					weTopUpDS.getPreparedStatement().setString(3, amount);
-					weTopUpDS.getPreparedStatement().setString(4, trx_id);
-					weTopUpDS.getPreparedStatement().setString(5, user_trx_id);
-					weTopUpDS.getPreparedStatement().setString(6, src);
-					weTopUpDS.getPreparedStatement().setString(7, payment_method);
-					weTopUpDS.getPreparedStatement().setString(8, trx_type);
-					weTopUpDS.getPreparedStatement().setString(9, msisdnNormalize(payee_phone));
+					ps.setString(2, user_id);
+					ps.setString(3, amount);
+					ps.setString(4, trx_id);
+					ps.setString(5, user_trx_id);
+					ps.setString(6, src);
+					ps.setString(7, payment_method);
+					ps.setString(8, trx_type);
+					ps.setString(9, msisdnNormalize(payee_phone));
 
-					weTopUpDS.execute();
+					ps.execute();
+					
+					ps.close();
 
 					trxErrorCode = "0";
 					trxErrorMessage = "successfully inserted into transaction_log";
@@ -1416,7 +1467,7 @@ public class UserDBOperations {
 												
 												if(spiErrorCode.equals("0")) {
 													updateDBStatus(topup_trx_id, "3", opConf);
-												} else {
+												} else if(spiErrorCode.equals("5") || spiErrorCode.equals("50") || spiErrorCode.equals("30") || spiErrorCode.equals("31") || spiErrorCode.equals("32")) {
 													updateDBStatus(topup_trx_id, "10", opConf);
 													
 													boolean refundShadowFlag = false;
@@ -1478,6 +1529,9 @@ public class UserDBOperations {
 //													} else {
 //														insertTopupRefund(transLogID,user_id,amount,payee_email, source);
 //													}
+												} else {
+													//TODO													
+													// check if eligible for refund
 												}
 												
 												
@@ -1568,18 +1622,11 @@ public class UserDBOperations {
 					trxErrorMessage = "other Exception";
 					e.printStackTrace();
 				}
-			} finally {
-				if (weTopUpDS.getConnection() != null) {
-					try {
-						weTopUpDS.closePreparedStatement();
-						// weTopUpDS.getConnection().close();
-					} catch (SQLException e) {
-						trxErrorCode = "-4"; // :connection close Exception
-						trxErrorMessage = "connection close Exception";
-						e.printStackTrace();
-						LogWriter.LOGGER.severe(e.getMessage());
-					}
-				}
+			} catch (Exception e) {
+				e.printStackTrace();
+				trxErrorCode = "10"; // :other Exception
+				trxErrorMessage = "other Exception";
+				e.printStackTrace();
 			}
 			// LogWriter.LOGGER.info("UserID:"+userId);
 
@@ -1664,15 +1711,15 @@ public class UserDBOperations {
 		try {
 			opConf = NullPointerExceptionHandler.isNullOrEmpty(opConf)?"":opConf;
 			
-			weTopUpDS.prepareStatement(sqlUpdateUser);
-			weTopUpDS.getPreparedStatement().setInt(1, Integer.parseInt(status));
-			weTopUpDS.getPreparedStatement().setString(2, opConf);
-			weTopUpDS.getPreparedStatement().setString(3, opConf);
-			weTopUpDS.getPreparedStatement().setString(4, trxID);
-			weTopUpDS.getPreparedStatement().setInt(5, Integer.parseInt(status));
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sqlUpdateUser);
+			ps.setInt(1, Integer.parseInt(status));
+			ps.setString(2, opConf);
+			ps.setString(3, opConf);
+			ps.setString(4, trxID);
+			ps.setInt(5, Integer.parseInt(status));
 			
-			long count = weTopUpDS.executeUpdate();
-			weTopUpDS.closePreparedStatement();
+			long count = ps.executeUpdate();
+			ps.close();
 			if(count>0) {
 				retval = true;
 				this.logWriter.appendLog("UpdateTopupLog : successful : "+status);
@@ -1718,24 +1765,37 @@ public class UserDBOperations {
 		String lastUpdateTime = "";
 		String sql = "SELECT update_time FROM packages_info order by update_time desc limit 1";
 		try {
-			weTopUpDS.prepareStatement(sql);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
 			
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				lastUpdateTime = rs.getString("update_time");
 			}
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (NullPointerException e) {
 			LogWriter.LOGGER.severe(e.getMessage());
 		} catch (Exception e) {
-			if (weTopUpDS.getConnection() != null) {
-				try {
-					weTopUpDS.closePreparedStatement();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
+			LogWriter.LOGGER.severe(e.getMessage());
+		}
+		return lastUpdateTime;
+	}
+	
+	private String fetchLastConfigUpdateTime() {
+		String lastUpdateTime = "";
+		String sql = "SELECT update_time FROM configurations order by update_time desc limit 1";
+		try {
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			
+			ResultSet rs = ps.executeQuery();
+			if (rs.next()) {
+				lastUpdateTime = rs.getString("update_time");
 			}
+			rs.close();
+			ps.close();
+		} catch (NullPointerException e) {
+			LogWriter.LOGGER.severe(e.getMessage());
+		} catch (Exception e) {
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		return lastUpdateTime;
@@ -1745,13 +1805,13 @@ public class UserDBOperations {
 		boolean flag = false;
 		String sql = "SELECT count(*) FROM users_info where user_type in (?,?) and phone=?";
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, "5"); // for Retailer
-			weTopUpDS.getPreparedStatement().setString(2, "10"); // for Trusted Retailer
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, "5"); // for Retailer
+			ps.setString(2, "10"); // for Trusted Retailer
 			msisdn = msisdnNormalize(msisdn);
-			weTopUpDS.getPreparedStatement().setString(3, msisdn);
+			ps.setString(3, msisdn);
 
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				if(rs.getInt(1)>0) {
 					flag = true;
@@ -1760,17 +1820,10 @@ public class UserDBOperations {
 				}
 			}
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (NullPointerException e) {
 			LogWriter.LOGGER.severe(e.getMessage());
 		} catch (Exception e) {
-			if (weTopUpDS.getConnection() != null) {
-				try {
-					weTopUpDS.closePreparedStatement();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-			}
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		return flag;
@@ -1990,17 +2043,18 @@ public class UserDBOperations {
 			String sqlTransactionLog = "INSERT INTO PostalServices.app_email_queues (app_name, subject, mailbody, to_address, from_address, cc_address, bcc_address) values (?, ?, ?, ?, ?, ?, ?)";
 
 			try {
-				weTopUpDS.prepareStatement(sqlTransactionLog, true);
-				weTopUpDS.getPreparedStatement().setString(1, app_name);
-				weTopUpDS.getPreparedStatement().setString(2, subject);
-				weTopUpDS.getPreparedStatement().setString(3, mailbody);
-				weTopUpDS.getPreparedStatement().setString(4, to_address);
-				weTopUpDS.getPreparedStatement().setString(5, from_address);
-				weTopUpDS.getPreparedStatement().setString(6, cc_address);
-				weTopUpDS.getPreparedStatement().setString(7, bcc_address);
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sqlTransactionLog);
+				ps.setString(1, app_name);
+				ps.setString(2, subject);
+				ps.setString(3, mailbody);
+				ps.setString(4, to_address);
+				ps.setString(5, from_address);
+				ps.setString(6, cc_address);
+				ps.setString(7, bcc_address);
 
-				weTopUpDS.execute();
+				ps.execute();
 
+				ps.close();
 				errorCode = "0";
 				errorMessage = "successfully inserted into app_email_queue";
 
@@ -2022,18 +2076,10 @@ public class UserDBOperations {
 			
 			
 			
-		} finally {
-			if (weTopUpDS.getConnection() != null) {
-				try {
-					weTopUpDS.closePreparedStatement();
-					// weTopUpDS.getConnection().close();
-				} catch (SQLException e) {
-					errorCode = "-4"; // :connection close Exception
-					errorMessage = "connection close Exception";
-					e.printStackTrace();
-					LogWriter.LOGGER.severe(e.getMessage());
-				}
-			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			errorCode = "10"; // :other Exception
+			errorMessage = "other Exception";
 		}
 		// LogWriter.LOGGER.info("UserID:"+userId);
 		jsonEncoder.addElement("ErrorCode", errorCode);
@@ -2083,16 +2129,16 @@ public class UserDBOperations {
 		try {
 			String sql = "select c.templateID, t.req_file_name, t.req_file_location from template_configuration c left outer join template_table t on c.templateID = t.ID where c.action=?";
 
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, action);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, action);
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				jsonReqName = rs.getString("req_file_name");
 				jsonReqPath = rs.getString("req_file_location");
 				templateID = rs.getString("templateID");
 			}
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			LogWriter.LOGGER.severe(e.getMessage());
@@ -2116,10 +2162,10 @@ public class UserDBOperations {
 	public void deleteUsersEntry(String userId) {
 		try {
 			String sqlDeleteUser = "DELETE FROM users WHERE user_id=?";
-			weTopUpDS.prepareStatement(sqlDeleteUser);
-			weTopUpDS.getPreparedStatement().setString(1, userId);
-			weTopUpDS.execute();
-			weTopUpDS.closePreparedStatement();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sqlDeleteUser);
+			ps.setString(1, userId);
+			ps.execute();
+			ps.close();
 			LogWriter.LOGGER.info("User entry deleted");
 			this.logWriter.appendLog("dUe:rolledBack");
 		} catch (SQLException e) {
@@ -2127,17 +2173,8 @@ public class UserDBOperations {
 			this.logWriter.setStatus(0);
 			this.logWriter.appendLog("dUe:SE");
 			this.logWriter.appendAdditionalInfo("UDO.deleteUsersEntry():" + e.getMessage());
-		} finally {
-			if (weTopUpDS.getConnection() != null) {
-				try {
-					if (!weTopUpDS.isPreparedStatementClosed())
-						weTopUpDS.closePreparedStatement();
-				} catch (SQLException e) {
-					LogWriter.LOGGER.severe(e.getMessage());
-					this.logWriter.appendLog("s:SE");
-					this.logWriter.appendAdditionalInfo("UDO.deleteUsersEntry():" + e.getMessage());
-				}
-			}
+		} catch (Exception e) {
+			LogWriter.LOGGER.severe(e.getMessage());
 		}
 	}
 	
@@ -2276,11 +2313,11 @@ public class UserDBOperations {
 		String sql = "UPDATE `topup_log` SET trx_status =? WHERE trx_id=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, status);
-			weTopUpDS.getPreparedStatement().setString(2, trx_id);
-			weTopUpDS.execute();
-			weTopUpDS.closePreparedStatement();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, status);
+			ps.setString(2, trx_id);
+			ps.execute();
+			ps.close();
 			errorCode = "0";
 			errorMessage = "Update successful.";
 		} catch (SQLException e) {
@@ -2311,11 +2348,11 @@ public class UserDBOperations {
 			String sql = "select trx_id from cards_list where user_id=? and card_number=? and status=?";
 
 			try {
-				weTopUpDS.prepareStatement(sql);
-				weTopUpDS.getPreparedStatement().setString(1, user_id);
-				weTopUpDS.getPreparedStatement().setString(2, card_number);
-				weTopUpDS.getPreparedStatement().setInt(3, 0); // pending status
-				ResultSet rs = weTopUpDS.executeQuery();
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+				ps.setString(1, user_id);
+				ps.setString(2, card_number);
+				ps.setInt(3, 0); // pending status
+				ResultSet rs = ps.executeQuery();
 				if (status.equals("1")) {
 					while (rs.next()) {
 						trx_id = rs.getString(1);
@@ -2338,7 +2375,7 @@ public class UserDBOperations {
 						updateTransactionStatus(trx_id, "7", "").getJsonObject().toString();
 					}
 				}
-				weTopUpDS.closePreparedStatement();
+				ps.close();
 				rs.close();
 				errorCode = "0";
 				errorMessage = "Update successful.";
@@ -2367,12 +2404,12 @@ public class UserDBOperations {
 		String sql = "update cards_list set status=?, json_req = ? where trx_id = ? and status not in (0)";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setInt(1, 0);
-			weTopUpDS.getPreparedStatement().setString(2, jsonReq);
-			weTopUpDS.getPreparedStatement().setString(3, trx_id);
-			long count = weTopUpDS.executeUpdate();
-			weTopUpDS.closePreparedStatement();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setInt(1, 0);
+			ps.setString(2, jsonReq);
+			ps.setString(3, trx_id);
+			long count = ps.executeUpdate();
+			ps.close();
 			if(count>0) {
 				errorCode = "0";
 				errorMessage = "Update successful.";
@@ -2401,13 +2438,13 @@ public class UserDBOperations {
 		String sql = "update cards_list set status=?,guest_status=?, updated_by=? where trx_id = ?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setInt(1, status);
-			weTopUpDS.getPreparedStatement().setInt(2, Integer.parseInt(guest_status));
-			weTopUpDS.getPreparedStatement().setString(3, admin_id);
-			weTopUpDS.getPreparedStatement().setString(4, trx_id);
-			long count = weTopUpDS.executeUpdate();
-			weTopUpDS.closePreparedStatement();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setInt(1, status);
+			ps.setInt(2, Integer.parseInt(guest_status));
+			ps.setString(3, admin_id);
+			ps.setString(4, trx_id);
+			long count = ps.executeUpdate();
+			ps.close();
 			if(count>0) {
 				errorCode = "0";
 				errorMessage = "Update successful.";
@@ -2437,11 +2474,11 @@ public class UserDBOperations {
 		String sql = "update cards_list set user_id=? where trx_id=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, user_id);
-			weTopUpDS.getPreparedStatement().setString(2, trx_id);
-			weTopUpDS.execute();
-			weTopUpDS.closePreparedStatement();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, user_id);
+			ps.setString(2, trx_id);
+			ps.execute();
+			ps.close();
 			errorCode = "0";
 			errorMessage = "Update successful.";
 			LogWriter.LOGGER.info(errorMessage);
@@ -2493,16 +2530,17 @@ public class UserDBOperations {
 					String newTrx_id = RandomStringGenerator
 							.getRandomString("0123456789abcdefghABCDEFGHIJKLMNOPQRSTUVWXYZijklmnopqrstuvwxyz", 10);
 
-					weTopUpDS.prepareStatement(sqlTransactionLog, true);
-					weTopUpDS.getPreparedStatement().setString(1, newTrx_id);
-					weTopUpDS.getPreparedStatement().setString(2, trx_id);
-					weTopUpDS.getPreparedStatement().setString(3, "0");
-					weTopUpDS.getPreparedStatement().setString(4, "3");
-					weTopUpDS.getPreparedStatement().setString(5, "0");
-					weTopUpDS.getPreparedStatement().setString(6, trx_id);
+					PreparedStatement ps = weTopUpDS.newPrepareStatement(sqlTransactionLog);
+					ps.setString(1, newTrx_id);
+					ps.setString(2, trx_id);
+					ps.setString(3, "0");
+					ps.setString(4, "3");
+					ps.setString(5, "0");
+					ps.setString(6, trx_id);
 
-					weTopUpDS.execute();
+					ps.execute();
 
+					ps.close();
 					trxErrorCode = "0";
 					trxErrorMessage = "successfully inserted into transaction_log";
 
@@ -2552,18 +2590,11 @@ public class UserDBOperations {
 				e.printStackTrace();
 				trxErrorCode = "11";
 				trxErrorMessage = "SQLException";
-			} finally {
-				if (weTopUpDS.getConnection() != null) {
-					try {
-						weTopUpDS.closePreparedStatement();
-						// weTopUpDS.getConnection().close();
-					} catch (SQLException e) {
-						trxErrorCode = "-4"; // :connection close Exception
-						e.printStackTrace();
-						trxErrorMessage = "Connection close Exception";
-						LogWriter.LOGGER.severe(e.getMessage());
-					}
-				}
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				trxErrorCode = "3";
+				trxErrorMessage = "General Exception";
 			}
 		}
 		jsonEncoderInput.addElement("trx_id", trx_id);
@@ -2587,16 +2618,16 @@ public class UserDBOperations {
 		String sqlUpdateUser = "UPDATE transaction_log set update_time=now(), trx_status=?, bal_rec_status=?,additional_info = case when additional_info is null and ? is not null then ? "
 				+ "when additional_info is not null and ? is not null then concat(additional_info,' | ',?) else additional_info end  where trx_id=?";
 		try {
-			weTopUpDS.prepareStatement(sqlUpdateUser);
-			weTopUpDS.getPreparedStatement().setString(1, trxStatus);
-			weTopUpDS.getPreparedStatement().setString(2, balStatus);
-			weTopUpDS.getPreparedStatement().setString(3, additional_info);
-			weTopUpDS.getPreparedStatement().setString(4, additional_info);
-			weTopUpDS.getPreparedStatement().setString(5, additional_info);
-			weTopUpDS.getPreparedStatement().setString(6, additional_info);
-			weTopUpDS.getPreparedStatement().setString(7, trxID);
-			weTopUpDS.execute();
-			weTopUpDS.closePreparedStatement();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sqlUpdateUser);
+			ps.setString(1, trxStatus);
+			ps.setString(2, balStatus);
+			ps.setString(3, additional_info);
+			ps.setString(4, additional_info);
+			ps.setString(5, additional_info);
+			ps.setString(6, additional_info);
+			ps.setString(7, trxID);
+			ps.execute();
+			ps.close();
 			LogWriter.LOGGER.info("updateBalTRXStatus(): bal_rec_status for trxID : " + balStatus);
 			retval = true;
 		} catch (SQLException e) {
@@ -2617,11 +2648,11 @@ public class UserDBOperations {
 		} else {
 			try {
 				String sqlTopUpRetry = "insert into refund_fails (trx_id) VALUES (?)";
-
+				PreparedStatement ps = null;
 				try {
-					weTopUpDS.prepareStatement(sqlTopUpRetry, true);
-					weTopUpDS.getPreparedStatement().setString(1, trx_id);
-					weTopUpDS.execute();
+					ps = weTopUpDS.newPrepareStatement(sqlTopUpRetry);
+					ps.setString(1, trx_id);
+					ps.execute();
 
 					errorCode = "0";
 					errorMessage = "Successfully inserted into refund_fails.";
@@ -2641,18 +2672,12 @@ public class UserDBOperations {
 					errorMessage = "General Exception";
 					e.printStackTrace();
 				}
-			} finally {
-				if (weTopUpDS.getConnection() != null) {
-					try {
-						weTopUpDS.closePreparedStatement();
-						// weTopUpDS.getConnection().close();
-					} catch (SQLException e) {
-						errorCode = "-4"; // :connection close Exception
-						errorMessage = "Connection close Exception";
-						e.printStackTrace();
-						LogWriter.LOGGER.severe(e.getMessage());
-					}
-				}
+				ps.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+				errorCode = "10"; // :other Exception
+				errorMessage = "General Exception";
+				e.printStackTrace();
 			}
 		}
 
@@ -2679,13 +2704,13 @@ public class UserDBOperations {
 			String sql = "UPDATE `transaction_log` SET update_time=now(), trx_status = ?  WHERE trx_id=? and trx_status in (0,1,2,5)";
 
 			try {
-				weTopUpDS.prepareStatement(sql);
-				weTopUpDS.getPreparedStatement().setString(1, status);
-				weTopUpDS.getPreparedStatement().setString(2, trx_id);
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+				ps.setString(1, status);
+				ps.setString(2, trx_id);
 				
 
-				long count = weTopUpDS.executeUpdate();
-				weTopUpDS.closePreparedStatement();
+				long count = ps.executeUpdate();
+				ps.close();
 				if(count>0) {
 					errorCode = "0";
 					errorMessage = "modification successful.";
@@ -2971,7 +2996,7 @@ public class UserDBOperations {
 		return jsonEncoder;
 	}
 
-	public JsonEncoder updateTransactionStatus(String trx_id, String status, String additional_info, String trx_type,
+	public JsonEncoder updateTransactionStatus(String trx_id, String status, String additional_info,
 			String LP_trx_status, String payment_method, String card_brand, String card_number, String bank,
 			String bkash_payment_number, String billing_name, String card_region, String binIssuerCountry, String binIssuerBank) {
 		JsonEncoder jsonEncoder = new JsonEncoder();
@@ -2983,7 +3008,6 @@ public class UserDBOperations {
 		
 		LogWriter.LOGGER.info("UPDATE : trx_id : " + trx_id 
 				+ "\nstatus 				: " + status 
-				+ "\ntrx_type 				: " + trx_type 
 				+ "\nadditional_info		:	" + additional_info 
 				+ "\nLP_trx_status			:	" + LP_trx_status
 				+ "\npayment_method			:	" + payment_method 
@@ -2999,7 +3023,10 @@ public class UserDBOperations {
 		if (checkIfAlreadyUpdated(trx_id, status)) {
 			JsonDecoder jd = new JsonDecoder(getSingleTransaction(trx_id).getJsonObject().toString());
 			String user_id = jd.getNString("user_id");
+			String trx_type = jd.getNString("trx_type");
 
+			LogWriter.LOGGER.info("trx_type : " + trx_type);
+			
 			if (NullPointerExceptionHandler.isNullOrEmpty(card_number)) {
 
 			} else if (status.equals("2") && card_region.equals("0") && !binIssuerCountry.equalsIgnoreCase("bangladesh")) {
@@ -3019,26 +3046,26 @@ public class UserDBOperations {
 					+ "when additional_info is not null and ? is not null then concat(additional_info,' | ',?) else additional_info end, card_brand = ?, card_number = ?, card_region = ?, bin_issuer_country = ?, bin_issuer_bank = ?, bank = ?, bkash_payment_number = ?, billing_name = ? WHERE trx_id=? and trx_status in (0,1)";
 
 			try {
-				weTopUpDS.prepareStatement(sql);
-				weTopUpDS.getPreparedStatement().setString(1, status);
-				weTopUpDS.getPreparedStatement().setString(2, LP_trx_status);
-				weTopUpDS.getPreparedStatement().setString(3, payment_method);
-				weTopUpDS.getPreparedStatement().setString(4, payment_method);
-				weTopUpDS.getPreparedStatement().setString(5, additional_info);
-				weTopUpDS.getPreparedStatement().setString(6, additional_info);
-				weTopUpDS.getPreparedStatement().setString(7, additional_info);
-				weTopUpDS.getPreparedStatement().setString(8, additional_info);
-				weTopUpDS.getPreparedStatement().setString(9, card_brand);
-				weTopUpDS.getPreparedStatement().setString(10, card_number);
-				weTopUpDS.getPreparedStatement().setString(11, card_region);
-				weTopUpDS.getPreparedStatement().setString(12, binIssuerCountry);
-				weTopUpDS.getPreparedStatement().setString(13, binIssuerBank);
-				weTopUpDS.getPreparedStatement().setString(14, bank);
-				weTopUpDS.getPreparedStatement().setString(15, bkash_payment_number);
-				weTopUpDS.getPreparedStatement().setString(16, billing_name);
-				weTopUpDS.getPreparedStatement().setString(17, trx_id);
-				weTopUpDS.execute();
-				weTopUpDS.closePreparedStatement();
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+				ps.setString(1, status);
+				ps.setString(2, LP_trx_status);
+				ps.setString(3, payment_method);
+				ps.setString(4, payment_method);
+				ps.setString(5, additional_info);
+				ps.setString(6, additional_info);
+				ps.setString(7, additional_info);
+				ps.setString(8, additional_info);
+				ps.setString(9, card_brand);
+				ps.setString(10, card_number);
+				ps.setString(11, card_region);
+				ps.setString(12, binIssuerCountry);
+				ps.setString(13, binIssuerBank);
+				ps.setString(14, bank);
+				ps.setString(15, bkash_payment_number);
+				ps.setString(16, billing_name);
+				ps.setString(17, trx_id);
+				ps.execute();
+				ps.close();
 				if (blockFlag) {
 					errorCode = "2";
 					errorMessage = "Update successful, Card blocked.";
@@ -3140,7 +3167,7 @@ public class UserDBOperations {
 							
 							if(spiErrorCode.equals("0")) {
 								updateDBStatus(topup_trx_id, "3", opConf);
-							} else {
+							} else if(spiErrorCode.equals("5") || spiErrorCode.equals("50") || spiErrorCode.equals("30") || spiErrorCode.equals("31") || spiErrorCode.equals("32")) {
 								updateDBStatus(topup_trx_id, "10", opConf);
 								
 								boolean refundShadowFlag = false;
@@ -3174,6 +3201,9 @@ public class UserDBOperations {
 									userBalance = getUserBalance(user_id);
 									this.logWriter.appendLog("userBalanceRefundFailed : " + userBalance);
 								}
+							} else {
+								//TODO													
+								// check if eligible for refund
 							}
 							//**END
 							
@@ -3528,14 +3558,14 @@ public class UserDBOperations {
 
 		int count = 0;
 		try {
-			weTopUpDS.prepareStatement(sql);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
 			card_number = card_number.toUpperCase();
 
-			weTopUpDS.getPreparedStatement().setString(1, user_id);
-			weTopUpDS.getPreparedStatement().setString(2, card_number);
-			weTopUpDS.getPreparedStatement().setString(3, "1"); // status = 1 for unblocked cards
+			ps.setString(1, user_id);
+			ps.setString(2, card_number);
+			ps.setString(3, "1"); // status = 1 for unblocked cards
 
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				count = rs.getInt(1);
 			}
@@ -3547,7 +3577,7 @@ public class UserDBOperations {
 			LogWriter.LOGGER.info("card_number : " + card_number);
 			LogWriter.LOGGER.info("cardIsBlocked : " + retval);
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			LogWriter.LOGGER.severe("cardIsBlocked(): " + e.getMessage());
 		}
@@ -3565,13 +3595,14 @@ public class UserDBOperations {
 			try {
 				String sqlTransactionLog = "INSERT INTO cards_list (user_id,card_number,trx_id) VALUES (?,?,?)";
 
+				PreparedStatement ps = null;
 				try {
-					weTopUpDS.prepareStatement(sqlTransactionLog, true);
-					weTopUpDS.getPreparedStatement().setString(1, user_id);
-					weTopUpDS.getPreparedStatement().setString(2, card_number);
-					weTopUpDS.getPreparedStatement().setString(3, trx_id);
+					ps = weTopUpDS.newPrepareStatement(sqlTransactionLog);
+					ps.setString(1, user_id);
+					ps.setString(2, card_number);
+					ps.setString(3, trx_id);
 
-					weTopUpDS.execute();
+					ps.execute();
 
 					errorCode = "0";
 					LogWriter.LOGGER.info("inserted into card_list.");
@@ -3587,17 +3618,11 @@ public class UserDBOperations {
 					errorCode = "10"; // :other Exception
 					e.printStackTrace();
 				}
-			} finally {
-				if (weTopUpDS.getConnection() != null) {
-					try {
-						weTopUpDS.closePreparedStatement();
-						// weTopUpDS.getConnection().close();
-					} catch (SQLException e) {
-						errorCode = "-4"; // :connection close Exception
-						e.printStackTrace();
-						LogWriter.LOGGER.severe(e.getMessage());
-					}
-				}
+				ps.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+				errorCode = "10"; // :other Exception
+				e.printStackTrace();
 			}
 			// LogWriter.LOGGER.info("UserID:"+userId);
 
@@ -3610,11 +3635,11 @@ public class UserDBOperations {
 		boolean retval = false;
 		String sqlUpdateUser = "UPDATE transaction_log set update_time=now(), notification_email=?  where trx_id=?";
 		try {
-			weTopUpDS.prepareStatement(sqlUpdateUser);
-			weTopUpDS.getPreparedStatement().setString(1, status);
-			weTopUpDS.getPreparedStatement().setString(2, trxID);
-			weTopUpDS.execute();
-			weTopUpDS.closePreparedStatement();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sqlUpdateUser);
+			ps.setString(1, status);
+			ps.setString(2, trxID);
+			ps.execute();
+			ps.close();
 			LogWriter.LOGGER.info("updateEmailStatus(): email status for trxID : " + status);
 			retval = true;
 		} catch (SQLException e) {
@@ -3643,9 +3668,9 @@ public class UserDBOperations {
 				+ "where user_id = ? and trx_status not in (2,3,4,6) and DATE(insert_time) = CURDATE() order by id desc";
 		
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setInt(1, Integer.parseInt(userID));
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setInt(1, Integer.parseInt(userID));
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				failedCount = rs.getString(1);
 				failedAmount = rs.getString(2);
@@ -3655,7 +3680,7 @@ public class UserDBOperations {
 			errorMessage = "fetched User Stock Refill summary.";
 
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			errorCode = "11";
@@ -3691,9 +3716,9 @@ public class UserDBOperations {
 				+ "where user_id = ? and trx_status=2 and trx_type in (1) and  DATE(insert_time) = CURDATE() order by id desc";
 		
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setInt(1, Integer.parseInt(userID));
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setInt(1, Integer.parseInt(userID));
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				stockRefillCount = rs.getString(1);
 				stockRefillAmount = rs.getString(2);
@@ -3703,7 +3728,7 @@ public class UserDBOperations {
 			errorMessage = "fetched User Stock Refill summary.";
 
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			errorCode = "11";
@@ -3739,9 +3764,9 @@ public class UserDBOperations {
 				+ "where user_id = ? and trx_status=2 and trx_type in (0) and  DATE(insert_time) = CURDATE() order by id desc";
 		
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setInt(1, Integer.parseInt(userID));
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setInt(1, Integer.parseInt(userID));
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				topupCount = rs.getString(1);
 				topupAmount = rs.getString(2);
@@ -3751,7 +3776,7 @@ public class UserDBOperations {
 			errorMessage = "fetched User Transfer summary.";
 
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			errorCode = "11";
@@ -3787,9 +3812,9 @@ public class UserDBOperations {
 				+ "where user_id = ? and trx_status=2 and trx_type in (2,5) and  DATE(insert_time) = CURDATE() order by id desc";
 		
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setInt(1, Integer.parseInt(userID));
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setInt(1, Integer.parseInt(userID));
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				transferCount = rs.getString(1);
 				transferAmount = rs.getString(2);
@@ -3799,7 +3824,7 @@ public class UserDBOperations {
 			errorMessage = "fetched User Transfer summary.";
 
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			errorCode = "11";
@@ -3863,10 +3888,10 @@ public class UserDBOperations {
 				+ "FROM users_info u left join commission_configurations t on u.user_id=t.user_id where u.phone=?  or u.user_id=? order by u.created_at desc";
 		
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, msisdnNormalize(id));
-			weTopUpDS.getPreparedStatement().setString(2, id);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, msisdnNormalize(id));
+			ps.setString(2, id);
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				cashRate = rs.getDouble(1);
 				visaRate = rs.getDouble(2);
@@ -3901,7 +3926,7 @@ public class UserDBOperations {
 			errorMessage = "fetched UserOperationConfigs successfully.";
 
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			errorCode = "11";
@@ -3960,14 +3985,14 @@ public class UserDBOperations {
 		String sql = "UPDATE `transaction_log` SET update_time=now(), bal_rec_status =?, commission_amount=?, credit_amount=?, commission_rate=? WHERE trx_id=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, status);
-			weTopUpDS.getPreparedStatement().setString(2, commissionAmount+"");
-			weTopUpDS.getPreparedStatement().setString(3, creditAmount+"");
-			weTopUpDS.getPreparedStatement().setString(4, commissionRate+"");
-			weTopUpDS.getPreparedStatement().setString(5, trx_id);
-			weTopUpDS.execute();
-			weTopUpDS.closePreparedStatement();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, status);
+			ps.setString(2, commissionAmount+"");
+			ps.setString(3, creditAmount+"");
+			ps.setString(4, commissionRate+"");
+			ps.setString(5, trx_id);
+			ps.execute();
+			ps.close();
 			errorCode = "0";
 			errorMessage = "Update successful.";
 		} catch (SQLException e) {
@@ -3992,11 +4017,11 @@ public class UserDBOperations {
 		String sql = "UPDATE `transaction_log` SET update_time=now(), bal_rec_status =? WHERE trx_id=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, status);
-			weTopUpDS.getPreparedStatement().setString(2, trx_id);
-			weTopUpDS.execute();
-			weTopUpDS.closePreparedStatement();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, status);
+			ps.setString(2, trx_id);
+			ps.execute();
+			ps.close();
 			errorCode = "0";
 			errorMessage = "Update successful.";
 		} catch (SQLException e) {
@@ -4096,11 +4121,11 @@ public class UserDBOperations {
 			String sql = "UPDATE `transaction_log` SET update_time=now(), payment_method =? WHERE trx_id=?";
 
 			try {
-				weTopUpDS.prepareStatement(sql);
-				weTopUpDS.getPreparedStatement().setString(1, payment_method);
-				weTopUpDS.getPreparedStatement().setString(2, trx_id);
-				weTopUpDS.execute();
-				weTopUpDS.closePreparedStatement();
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+				ps.setString(1, payment_method);
+				ps.setString(2, trx_id);
+				ps.execute();
+				ps.close();
 				errorCode = "0";
 				errorMessage = "Update successful.";
 			} catch (SQLException e) {
@@ -4122,14 +4147,14 @@ public class UserDBOperations {
 		String sql = "SELECT user_id FROM topup_log WHERE trx_id=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, trx_id);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, trx_id);
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				user_id = rs.getString(1);
 			}
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			LogWriter.LOGGER.severe(e.getMessage());
@@ -4177,10 +4202,10 @@ public class UserDBOperations {
 					+ "\n" + "from topup_log t inner join transaction_log tx on t.trx_id=tx.trx_id \n"
 					+ "left join retry_profile rp on tx_id order by response_time desc";
 			try {
-				weTopUpDS.prepareStatement(sql);
-				weTopUpDS.getPreparedStatement().setString(1, userID);
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+				ps.setString(1, userID);
 
-				ResultSet rs = weTopUpDS.executeQuery();
+				ResultSet rs = ps.executeQuery();
 				if (rs.next()) {
 					user_id = rs.getString(1);
 					operator = rs.getString(2);
@@ -4200,7 +4225,7 @@ public class UserDBOperations {
 					errorMessage = "getStatus successful.";
 				}
 				rs.close();
-				weTopUpDS.closePreparedStatement();
+				ps.close();
 			} catch (SQLException e) {
 				e.printStackTrace();
 				errorCode = "11";
@@ -4275,10 +4300,10 @@ public class UserDBOperations {
 							: ("tx.trx_id='" + trxID))
 					+ "' -- CHANGE\n" + "group by tx.trx_id order by response_time desc";
 			try {
-				weTopUpDS.prepareStatement(sql);
-				weTopUpDS.getPreparedStatement().setString(1, userID);
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+				ps.setString(1, userID);
 
-				ResultSet rs = weTopUpDS.executeQuery();
+				ResultSet rs = ps.executeQuery();
 				if (rs.next()) {
 					user_id = rs.getString(1);
 					operator = rs.getString(2);
@@ -4300,7 +4325,7 @@ public class UserDBOperations {
 					errorMessage = "getStatus successful.";
 				}
 				rs.close();
-				weTopUpDS.closePreparedStatement();
+				ps.close();
 			} catch (SQLException e) {
 				e.printStackTrace();
 				errorCode = "11";
@@ -4375,11 +4400,11 @@ public class UserDBOperations {
 					"left join retry_profile rp on tx.retry_profile = rp.id where tx.user_id=? and tx.ref_file_id=? -- CHANGE \n" + 
 					"group by tx.trx_id) t0 group by t0.topup_status";
 			try {
-				weTopUpDS.prepareStatement(sql);
-				weTopUpDS.getPreparedStatement().setString(1, userID);
-				weTopUpDS.getPreparedStatement().setString(2, fileID);
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+				ps.setString(1, userID);
+				ps.setString(2, fileID);
 
-				ResultSet rs = weTopUpDS.executeQuery();
+				ResultSet rs = ps.executeQuery();
 				while(rs.next()) {
 					if(rs.getInt(1)==4) {
 						successCount = rs.getString(2);
@@ -4397,7 +4422,7 @@ public class UserDBOperations {
 				errorCode = "0";
 				errorMessage = "getStatus successful.";
 				rs.close();
-				weTopUpDS.closePreparedStatement();
+				ps.close();
 			} catch (SQLException e) {
 				e.printStackTrace();
 				errorCode = "11";
@@ -4426,9 +4451,9 @@ public class UserDBOperations {
 			String sql = "SELECT id, file_name, updated_file_name, date_format(insert_time, '%Y-%m-%d %H:%i:%S'), date_format(upload_time, '%Y-%m-%d %H:%i:%S'), status, estimated_upload_time, "
 					+ "comments FROM topup_file_info where user_id =? order by insert_time desc";
 			try {
-				weTopUpDS.prepareStatement(sql);
-				weTopUpDS.getPreparedStatement().setString(1, userID);
-				ResultSet rs = weTopUpDS.executeQuery();
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+				ps.setString(1, userID);
+				ResultSet rs = ps.executeQuery();
 				while (rs.next()) {
 					fileHistory += "\"" + rs.getString(1) + "\"" + ",";
 					fileHistory += "\"" + rs.getString(2) + "\"" + ",";
@@ -4447,7 +4472,7 @@ public class UserDBOperations {
 				errorMessage = "fetched file topup history successfully.";
 
 				rs.close();
-				weTopUpDS.closePreparedStatement();
+				ps.close();
 			} catch (SQLException e) {
 				e.printStackTrace();
 				errorCode = "11";
@@ -4487,14 +4512,14 @@ public class UserDBOperations {
 		String sql = "SELECT access_key FROM lebupay_access_key where id = ?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setInt(1, accessFlag);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setInt(1, accessFlag);
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				accessKey = rs.getString(1);
 			}
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			LogWriter.LOGGER.severe(e.getMessage());
@@ -4538,9 +4563,9 @@ public class UserDBOperations {
 				+ "payment_method, card_brand, card_number, bank, bkash_payment_number, billing_name, trx_type,commission_amount, credit_amount, commission_rate,notification_email,ref_trx_id,source, LP_trx_status, bin_issuer_bank, bin_issuer_country FROM transaction_log where trx_id=?";
 		
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, trx_id);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, trx_id);
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				user_id = rs.getString(1);
 				trx_id = rs.getString(2);
@@ -4573,7 +4598,7 @@ public class UserDBOperations {
 				errorMessage = "getStatus successful.";
 			}
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			errorCode = "11";
@@ -4630,9 +4655,9 @@ public class UserDBOperations {
 		String sql = "SELECT user_id, payee_phone, amount, operator, opType, payee_email, remarks, topup_trx_id FROM topup_log WHERE trx_id=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, trx_id);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, trx_id);
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				user_id = rs.getString(1);
 				payee_phone = rs.getString(2);
@@ -4646,7 +4671,7 @@ public class UserDBOperations {
 				errorMessage = "getStatus successful.";
 			}
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			errorCode = "11";
@@ -4687,9 +4712,9 @@ public class UserDBOperations {
 		String sql = "SELECT user_id, payee_phone, amount, operator, opType, payee_email, remarks, trx_id FROM topup_log WHERE topup_trx_id=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, topup_trx_id);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, topup_trx_id);
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				user_id = rs.getString(1);
 				payee_phone = rs.getString(2);
@@ -4703,7 +4728,7 @@ public class UserDBOperations {
 				errorMessage = "getStatus successful.";
 			}
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			errorCode = "11";
@@ -4741,14 +4766,14 @@ public class UserDBOperations {
 		String sql = "SELECT operator FROM topup_log WHERE trx_id=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, trx_id);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, trx_id);
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				operator = rs.getString(1);
 			}
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 
 			accessKey = fetchAccessKey(operator, test);
 
@@ -4809,11 +4834,11 @@ public class UserDBOperations {
 			try {
 				try {
 					LogWriter.LOGGER.info("fetching upload status.");
-					weTopUpDS.prepareStatement(query);
-					weTopUpDS.getPreparedStatement().setString(1, fileID);
-					weTopUpDS.getPreparedStatement().setString(2, user_id);
+					PreparedStatement ps = weTopUpDS.newPrepareStatement(query);
+					ps.setString(1, fileID);
+					ps.setString(2, user_id);
 
-					ResultSet rs = weTopUpDS.executeQuery();
+					ResultSet rs = ps.executeQuery();
 					while (rs.next()) {
 						status = rs.getString("status");
 						if (fetchAll) {
@@ -4827,8 +4852,8 @@ public class UserDBOperations {
 					}
 					LogWriter.LOGGER.info("fetched upload status : " + status);
 
-					weTopUpDS.closeResultSet();
-					weTopUpDS.closePreparedStatement();
+					rs.close();
+					ps.close();
 					errorCode = "0";// :Successfully
 					errorMessage = "Successfully fetched.";
 				} catch (SQLException e) {
@@ -4842,18 +4867,11 @@ public class UserDBOperations {
 					errorMessage = "General exception.";
 					e.printStackTrace();
 				}
-			} finally {
-				if (weTopUpDS.getConnection() != null) {
-					try {
-						weTopUpDS.closePreparedStatement();
-						// weTopUpDS.getConnection().close();
-					} catch (SQLException e) {
-						errorCode = "-4";
-						errorMessage = "connection close Exception.";
-						e.printStackTrace();
-						LogWriter.LOGGER.severe(e.getMessage());
-					}
-				}
+			} catch (Exception e) {
+				e.printStackTrace();
+				errorCode = "10"; // :other Exception
+				errorMessage = "General Exception";
+				e.printStackTrace();
 			}
 			jsonEncoder.addElement("ErrorCode", errorCode);
 			jsonEncoder.addElement("ErrorMessage", errorMessage);
@@ -4896,9 +4914,9 @@ public class UserDBOperations {
 		String sql = "SELECT u.user_name,u.phone,u.user_email,u.address,t.cash_rate,date_format(u.created_at, '%Y-%m-%d %H:%i:%S'),u.balance,u.dp_img,u.doc_img_01,u.doc_img_02,u.doc_img_03 FROM users_info u left join commission_configurations t on u.user_id=t.user_id where distributor_id=? order by u.created_at desc";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, userID);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, userID);
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				// user_name, phone, user_email, address, cash_rate, date_created_at,
 				// balance, dp_img, doc_img_01, doc_img_02, doc_img_03
@@ -4922,7 +4940,7 @@ public class UserDBOperations {
 			errorMessage = "fetched retailer list successfully.";
 
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			errorCode = "11";
@@ -4950,8 +4968,8 @@ public class UserDBOperations {
 		String sql = "SELECT operator_name, operator_balance, log_time FROM shadow_balance_info";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				balance_list += "\"" + rs.getString(1) + "\"" + ";";
 				balance_list += "\"" + rs.getString(2) + "\"" + ";";
@@ -4965,7 +4983,7 @@ public class UserDBOperations {
 			errorMessage = "fetched balance_list successfully.";
 
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			errorCode = "11";
@@ -4997,8 +5015,8 @@ public class UserDBOperations {
 			String sql = "SELECT b.id, b.operator_name, b.operator_balance, b.log_time as op_log_time, s.operator_balance as shadow_balance, s.log_time as shadow_log_time FROM balance_info b left join shadow_balance_info s on b.id=s.id order by b.id asc";
 
 			try {
-				weTopUpDS.prepareStatement(sql);
-				ResultSet rs = weTopUpDS.executeQuery();
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+				ResultSet rs = ps.executeQuery();
 				while (rs.next()) {
 					balance_list += "\"" + rs.getString(1) + "\"" + ";";
 					balance_list += "\"" + rs.getString(2) + "\"" + ";";
@@ -5015,7 +5033,7 @@ public class UserDBOperations {
 				errorMessage = "fetched balance_list successfully.";
 
 				rs.close();
-				weTopUpDS.closePreparedStatement();
+				ps.close();
 				jsonEncoder.addElement("userStock", fetchTotalUserStock());
 			} catch (SQLException e) {
 				e.printStackTrace();
@@ -5060,14 +5078,14 @@ public class UserDBOperations {
 					weTopUpDS.getCallableStatement().execute();
 					weTopUpDS.closeCallableStatement();
 				
-					weTopUpDS.prepareStatement(sql,true);
-					weTopUpDS.getPreparedStatement().setString(1, amount);
-					weTopUpDS.getPreparedStatement().setString(2, operator);
-					weTopUpDS.getPreparedStatement().setString(3, operator);
-					weTopUpDS.getPreparedStatement().setString(4, amount);
+					PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+					ps.setString(1, amount);
+					ps.setString(2, operator);
+					ps.setString(3, operator);
+					ps.setString(4, amount);
 					
-					long count = weTopUpDS.executeUpdate();
-					weTopUpDS.closePreparedStatement();
+					long count = ps.executeUpdate();
+					ps.close();
 					if(count>0) {
 						errorCode = "0";
 						errorMessage = "allocation successful.";
@@ -5101,12 +5119,12 @@ public class UserDBOperations {
 		
 		String sqlQuery = "INSERT INTO shadow_balance_log (operator, amount, log_time, action_by) VALUES (?,?,now(),?)";
 		try {
-			weTopUpDS.prepareStatement(sqlQuery, true);
-			weTopUpDS.getPreparedStatement().setString(1, operator);
-			weTopUpDS.getPreparedStatement().setString(2, amount);
-			weTopUpDS.getPreparedStatement().setString(3, userID);
-			weTopUpDS.execute();
-			weTopUpDS.closePreparedStatement();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sqlQuery);
+			ps.setString(1, operator);
+			ps.setString(2, amount);
+			ps.setString(3, userID);
+			ps.execute();
+			ps.close();
 			insertFlag = true;
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -5132,9 +5150,9 @@ public class UserDBOperations {
 			String sql = "SELECT json_contains(JSON_ARRAYAGG(json_array(isCritical)),json_array(01)) as is_critical, max(version) as version, max(url) as url, max(whats_new) as whatsNew FROM app_version where version>?";
 	
 			try {
-				weTopUpDS.prepareStatement(sql);
-				weTopUpDS.getPreparedStatement().setString(1, appVersion);
-				ResultSet rs = weTopUpDS.executeQuery();
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+				ps.setString(1, appVersion);
+				ResultSet rs = ps.executeQuery();
 				while (rs.next()) {
 //					is_critical, version, url
 					isCritical = rs.getString(1);
@@ -5146,7 +5164,7 @@ public class UserDBOperations {
 				errorMessage = "checked update successfully.";
 	
 				rs.close();
-				weTopUpDS.closePreparedStatement();
+				ps.close();
 			} catch (SQLException e) {
 				e.printStackTrace();
 				errorCode = "11";
@@ -5182,8 +5200,8 @@ public class UserDBOperations {
 		String sql = "SELECT operator_name, operator_balance, log_time FROM balance_info";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				balance_list += "\"" + rs.getString(1) + "\"" + ";";
 				balance_list += "\"" + rs.getString(2) + "\"" + ";";
@@ -5197,7 +5215,7 @@ public class UserDBOperations {
 			errorMessage = "fetched balance_list successfully.";
 
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			errorCode = "11";
@@ -5224,13 +5242,13 @@ public class UserDBOperations {
 		String sql = "SELECT sum(balance) as UserStock FROM users_info";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				userStock = rs.getString(1);
 			}
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			LogWriter.LOGGER.severe(e.getMessage());
@@ -5251,10 +5269,10 @@ public class UserDBOperations {
 		String sql = "select status, file_name from file_dump_query where id = ? and user_id = ?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, downloadID);
-			weTopUpDS.getPreparedStatement().setString(2, userID);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, downloadID);
+			ps.setString(2, userID);
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				downloadStatus = rs.getString(1);
 				fileName = rs.getString(2);
@@ -5264,7 +5282,7 @@ public class UserDBOperations {
 			errorMessage = "fetched download status successfully.";
 
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			errorCode = "11";
@@ -5292,9 +5310,9 @@ public class UserDBOperations {
 		String sql = "SELECT user_id, card_number, region, status, guest_status, date_format(insert_time, '%Y-%m-%d %H:%i:%S') FROM cards_list where user_id=? order by id desc";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, userID);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, userID);
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				// user_name, phone, user_email, address, cash_rate, date_created_at,
 				// balance, dp_img, doc_img_01, doc_img_02, doc_img_03
@@ -5313,7 +5331,7 @@ public class UserDBOperations {
 			errorMessage = "fetched card list successfully.";
 
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			errorCode = "11";
@@ -5341,9 +5359,9 @@ public class UserDBOperations {
 		String sql = "select count(*) from cards_list where user_id=? and status=-1 order by id desc";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, userID);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, userID);
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				pending_card_count = rs.getString(1);
 				
@@ -5353,7 +5371,7 @@ public class UserDBOperations {
 			errorMessage = "fetched card list successfully.";
 
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			errorCode = "11";
@@ -5381,9 +5399,9 @@ public class UserDBOperations {
 		String sql = "select c.trx_id, t.amount, t.trx_type, c.status, t.insert_time, c.json_req from cards_list c left join transaction_log t on c.trx_id=t.trx_id where c.user_id=? order by c.id desc";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, userID);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, userID);
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				// trx_id, amount, trx_type, status, insert_time, json_req
 				pending_trx_list += "\"" + rs.getString(1) + "\"" + ";";
@@ -5401,7 +5419,7 @@ public class UserDBOperations {
 			errorMessage = "fetched card list successfully.";
 
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			errorCode = "11";
@@ -5431,9 +5449,9 @@ public class UserDBOperations {
 			String sql = "SELECT CONCAT(user_id,'|',card_number), GROUP_CONCAT(CONCAT(json_req, ';',guest_status,';',update_time) SEPARATOR '|') jsonArray FROM cards_list where status=? GROUP BY user_id,card_number order by user_id desc";
 
 			try {
-				weTopUpDS.prepareStatement(sql);
-				weTopUpDS.getPreparedStatement().setInt(1, 0);
-				ResultSet rs = weTopUpDS.executeQuery();
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+				ps.setInt(1, 0);
+				ResultSet rs = ps.executeQuery();
 				while (rs.next()) {
 //					LogWriter.LOGGER.info("here");
 					jsonEncoder2.addElement(rs.getString(1), NullPointerExceptionHandler.isNullOrEmpty(rs.getString(2))?"{}":rs.getString(2));
@@ -5443,7 +5461,7 @@ public class UserDBOperations {
 				errorMessage = "fetched card list successfully.";
 				jsonEncoder.addElement("pending_trx_list", jsonEncoder2.getJsonObject().toString());
 				rs.close();
-				weTopUpDS.closePreparedStatement();
+				ps.close();
 			} catch (SQLException e) {
 				e.printStackTrace();
 				errorCode = "11";
@@ -5521,18 +5539,18 @@ public class UserDBOperations {
 						"ELSE false END) and (t.insert_time between ? and ?) order by t.insert_time desc limit 100";
 			
 				try {
-					weTopUpDS.prepareStatement(sql);
-					weTopUpDS.getPreparedStatement().setString(1, userID);
-					weTopUpDS.getPreparedStatement().setString(2, userID);
-					weTopUpDS.getPreparedStatement().setString(3, userID);
-					weTopUpDS.getPreparedStatement().setString(4, userID);
-					weTopUpDS.getPreparedStatement().setString(5, userID);
-					weTopUpDS.getPreparedStatement().setString(6, userPhone);
-					weTopUpDS.getPreparedStatement().setString(7, userPhone);
-					weTopUpDS.getPreparedStatement().setString(8, startDate);
-					weTopUpDS.getPreparedStatement().setString(9, endDate);
+					PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+					ps.setString(1, userID);
+					ps.setString(2, userID);
+					ps.setString(3, userID);
+					ps.setString(4, userID);
+					ps.setString(5, userID);
+					ps.setString(6, userPhone);
+					ps.setString(7, userPhone);
+					ps.setString(8, startDate);
+					ps.setString(9, endDate);
 					
-					ResultSet rs = weTopUpDS.executeQuery();
+					ResultSet rs = ps.executeQuery();
 					
 					while (rs.next()) {
 						//	user_id, trx_id, Ref. TrxID, amount, Purpose, Status Message, trx_type, trx_status, payment_method, Sender, Receiver, Date
@@ -5557,7 +5575,7 @@ public class UserDBOperations {
 					errorMessage = "fetched Stock transaction history successfully.";
 
 					rs.close();
-					weTopUpDS.closePreparedStatement();
+					ps.close();
 					
 				} catch (SQLException e) {
 					e.printStackTrace();
@@ -5573,6 +5591,152 @@ public class UserDBOperations {
 		jsonEncoder.addElement("ErrorMessage", errorMessage);
 		jsonEncoder.addElement("userID", userID);
 		jsonEncoder.addElement("trx_history", trx_history);
+
+		jsonEncoder.buildJsonObject();
+		return jsonEncoder;
+	}
+	
+	public JsonEncoder fetchTrxHistoryAdmin(String userID, String source,String reportType, String startDate, String endDate) {
+		JsonEncoder jsonEncoder = new JsonEncoder();
+		String errorCode = "-1";
+		String errorMessage = "General error.";
+
+		String trx_history = "";
+		String sql = "";
+
+		if (NullPointerExceptionHandler.isNullOrEmpty(userID) || NullPointerExceptionHandler.isNullOrEmpty(source) || NullPointerExceptionHandler.isNullOrEmpty(reportType)) {
+			errorCode = "5";
+			errorMessage = "Missing one or more parameters.";
+		} else if(checkIfManagerialAdmin(userID)) {
+			sql = "SELECT " + 
+					"u.phone, t.trx_id, t.amount, 'Successful' as trx_status, " + 
+					"t.insert_time as initiation_time, t.update_time as completion_time, " + 
+					"case when t.card_brand is null or t.card_brand='' then  t.bank else t.card_brand end as payment_method,  " + 
+					"case when t.trx_type=1 then 'Stock Refill' else 'Topup' end as trx_type " + 
+					"FROM transaction_log t left join users_info u on t.user_id=u.user_id " + 
+					"where t.source =? " + 
+					"and t.payment_method=1 " + 
+					"and t.trx_status=2 and LP_trx_status like 'success' " + 
+					"and t.trx_type in ("+(reportType.equals("10")?"0,1":"0")+") " + 
+					"and t.insert_time between ? and DATE_SUB( DATE_ADD(?, INTERVAL 1 DAY),INTERVAL 1 SECOND) " + 
+					"order by t.id desc";
+			
+			try {
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+				ps.setString(1, source);
+				ps.setString(2, startDate);
+				ps.setString(3, endDate);
+				
+				
+				ResultSet rs = ps.executeQuery();
+				
+				while (rs.next()) {
+					// phone, trx_id, amount, trx_status, initiation_time, completion_time, payment_method, trx_type
+					trx_history += "\"" + rs.getString(1) + "\"" + ",";
+					trx_history += "\"" + rs.getString(2) + "\"" + ",";
+					trx_history += "\"" + rs.getString(3) + "\"" + ",";
+					trx_history += "\"" + rs.getString(4) + "\"" + ",";
+					trx_history += "\"" + rs.getString(5) + "\"" + ",";
+					trx_history += "\"" + rs.getString(6) + "\"" + ",";
+					trx_history += "\"" + rs.getString(7) + "\"" + ",";
+					trx_history += "\"" + rs.getString(8) + "\"" + "|";
+				}
+				int lio = trx_history.lastIndexOf("|");
+				if (lio > 0)
+					trx_history = trx_history.substring(0, lio);
+
+				errorCode = "0";
+				errorMessage = "fetched ADMIN transaction history successfully.";
+
+				rs.close();
+				ps.close();
+				
+			} catch (SQLException e) {
+				e.printStackTrace();
+				errorCode = "11";
+				errorMessage = "SQL Exception.";
+				LogWriter.LOGGER.severe(e.getMessage());
+			}
+		} else {
+			//not authorized
+			errorCode = "-5";
+			errorMessage = "User not Authorized.";
+		}
+
+		//LogWriter.LOGGER.info("trx_history :" + trx_history);
+		jsonEncoder.addElement("ErrorCode", errorCode);
+		jsonEncoder.addElement("ErrorMessage", errorMessage);
+		jsonEncoder.addElement("userID", userID);
+		jsonEncoder.addElement("trx_history", trx_history);
+
+		jsonEncoder.buildJsonObject();
+		return jsonEncoder;
+	}
+	
+	public JsonEncoder fetchTrxSummaryAdmin(String userID, String source,String reportType, String startDate, String endDate) {
+		JsonEncoder jsonEncoder = new JsonEncoder();
+		String errorCode = "-1";
+		String errorMessage = "General error.";
+
+		String trx_history = "";
+		String sql = "";
+
+		if (NullPointerExceptionHandler.isNullOrEmpty(userID) || NullPointerExceptionHandler.isNullOrEmpty(source) || NullPointerExceptionHandler.isNullOrEmpty(reportType)) {
+			errorCode = "5";
+			errorMessage = "Missing one or more parameters.";
+		} else if(checkIfManagerialAdmin(userID)) {
+			sql = "select count(*) as count, sum(t.amount) as amount, t.payment_method from ( " + 
+					"SELECT amount,case when card_brand is null or card_brand='' then  bank else card_brand end as payment_method " + 
+					"FROM transaction_log " + 
+					"where source =? " + 
+					"and payment_method=1 " + 
+					"and trx_status=2 and LP_trx_status like 'success' " + 
+					"and trx_type in ("+(reportType.equals("10")?"0,1":"0")+") " +
+					"and t.insert_time between ? and DATE_SUB( DATE_ADD(?, INTERVAL 1 DAY),INTERVAL 1 SECOND) " + 
+					") t group by payment_method";
+			
+			try {
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+				ps.setString(1, source);
+				ps.setString(2, startDate);
+				ps.setString(3, endDate);
+				
+				
+				ResultSet rs = ps.executeQuery();
+				
+				while (rs.next()) {
+					// count, amount, payment_method
+					trx_history += "\"" + rs.getString(1) + "\"" + ",";
+					trx_history += "\"" + rs.getString(2) + "\"" + ",";
+					trx_history += "\"" + rs.getString(3) + "\"" + "|";
+				}
+				int lio = trx_history.lastIndexOf("|");
+				if (lio > 0)
+					trx_history = trx_history.substring(0, lio);
+
+				errorCode = "0";
+				errorMessage = "fetched ADMIN transaction SUMMARY successfully.";
+
+				rs.close();
+				ps.close();
+				
+			} catch (SQLException e) {
+				e.printStackTrace();
+				errorCode = "11";
+				errorMessage = "SQL Exception.";
+				LogWriter.LOGGER.severe(e.getMessage());
+			}
+		} else {
+			//not authorized
+			errorCode = "-5";
+			errorMessage = "User not Authorized.";
+		}
+
+		//LogWriter.LOGGER.info("trx_history :" + trx_history);
+		jsonEncoder.addElement("ErrorCode", errorCode);
+		jsonEncoder.addElement("ErrorMessage", errorMessage);
+		jsonEncoder.addElement("userID", userID);
+		jsonEncoder.addElement("trx_summary", trx_history);
 
 		jsonEncoder.buildJsonObject();
 		return jsonEncoder;
@@ -5615,14 +5779,14 @@ public class UserDBOperations {
 						"ELSE false END)  order by insert_time desc limit 100";
 			}
 			try {
-				weTopUpDS.prepareStatement(sql);
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
 				if (userType.equals("5")) {
-					weTopUpDS.getPreparedStatement().setString(1, mode);
+					ps.setString(1, mode);
 				}else {
-					weTopUpDS.getPreparedStatement().setInt(1, Integer.parseInt(mode));
+					ps.setInt(1, Integer.parseInt(mode));
 				}
 				
-				ResultSet rs = weTopUpDS.executeQuery();
+				ResultSet rs = ps.executeQuery();
 				
 				while (rs.next()) {
 					// trx_id, amount, trx_status, LP_trx_status, trx_type, insert_time, user_id
@@ -5650,7 +5814,7 @@ public class UserDBOperations {
 				errorMessage = "fetched transaction history successfully.";
 
 				rs.close();
-				weTopUpDS.closePreparedStatement();
+				ps.close();
 				
 			} catch (SQLException e) {
 				e.printStackTrace();
@@ -5700,9 +5864,9 @@ public class UserDBOperations {
 					+ "left join retry_profile rp on tx.retry_profile = rp.id\n" + "where tx.user_id=? -- CHANGE\n"
 					+ " and tx.trx_status not in (0,6) group by t.trx_id\n" + "order by min(t.insert_time) desc limit 100";
 			try {
-				weTopUpDS.prepareStatement(sql);
-				weTopUpDS.getPreparedStatement().setInt(1, Integer.parseInt(userID));
-				ResultSet rs = weTopUpDS.executeQuery();
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+				ps.setInt(1, Integer.parseInt(userID));
+				ResultSet rs = ps.executeQuery();
 				while (rs.next()) {
 					// trx_id,payee_phone,amount,trx_status,LP_trx_status,top_up_status,insert_time,payment_method
 					trx_history += "\"" + rs.getString(1) + "\"" + ",";
@@ -5722,7 +5886,7 @@ public class UserDBOperations {
 				errorMessage = "fetched topup history successfully.";
 
 				rs.close();
-				weTopUpDS.closePreparedStatement();
+				ps.close();
 			} catch (SQLException e) {
 				e.printStackTrace();
 				errorCode = "11";
@@ -5771,9 +5935,9 @@ public class UserDBOperations {
 						+ "left join retry_profile rp on tx.retry_profile = rp.id\n" + "where tx.user_id=? -- CHANGE\n"
 						+ " and tx.trx_status not in (0,6) group by t.trx_id\n" + "order by min(t.insert_time) desc limit 100";
 				try {
-					weTopUpDS.prepareStatement(sql);
-					weTopUpDS.getPreparedStatement().setInt(1, Integer.parseInt(userID));
-					ResultSet rs = weTopUpDS.executeQuery();
+					PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+					ps.setInt(1, Integer.parseInt(userID));
+					ResultSet rs = ps.executeQuery();
 					while (rs.next()) {
 						// trx_id,payee_phone,amount,trx_status,LP_trx_status,top_up_status,insert_time,payment_method
 						trx_history += "\"" + rs.getString(1) + "\"" + ",";
@@ -5793,7 +5957,7 @@ public class UserDBOperations {
 					errorMessage = "fetched topup history successfully.";
 
 					rs.close();
-					weTopUpDS.closePreparedStatement();
+					ps.close();
 				} catch (SQLException e) {
 					e.printStackTrace();
 					errorCode = "11";
@@ -5846,9 +6010,9 @@ public class UserDBOperations {
 					"					left join retry_profile rp on tx.retry_profile = rp.id left join topup_file_info tf on tx.ref_file_id=tf.id where tx.user_id=? -- CHANGE\\n\"\n" + 
 					"					and tx.trx_status in (6) group by t.trx_id order by min(t.insert_time) desc limit 500";
 			try {
-				weTopUpDS.prepareStatement(sql);
-				weTopUpDS.getPreparedStatement().setInt(1, Integer.parseInt(userID));
-				ResultSet rs = weTopUpDS.executeQuery();
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+				ps.setInt(1, Integer.parseInt(userID));
+				ResultSet rs = ps.executeQuery();
 				while (rs.next()) {
 					// trx_id,payee_phone,amount,trx_status,LP_trx_status,top_up_status,insert_time,payment_method
 					trx_history += "\"" + rs.getString(1) + "\"" + ",";
@@ -5870,7 +6034,7 @@ public class UserDBOperations {
 				errorMessage = "fetched topup history successfully.";
 
 				rs.close();
-				weTopUpDS.closePreparedStatement();
+				ps.close();
 			} catch (SQLException e) {
 				e.printStackTrace();
 				errorCode = "11";
@@ -5918,10 +6082,10 @@ public class UserDBOperations {
 					"					left join retry_profile rp on tx.retry_profile = rp.id left join topup_file_info tf on tx.ref_file_id=tf.id where tx.user_id=? -- CHANGE\\n\"\n" + 
 					"					and tx.trx_status in (6) and tx.ref_file_id = ? group by t.trx_id order by min(t.insert_time) desc limit 500";
 			try {
-				weTopUpDS.prepareStatement(sql);
-				weTopUpDS.getPreparedStatement().setInt(1, Integer.parseInt(userID));
-				weTopUpDS.getPreparedStatement().setInt(2, Integer.parseInt(fileID));
-				ResultSet rs = weTopUpDS.executeQuery();
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+				ps.setInt(1, Integer.parseInt(userID));
+				ps.setInt(2, Integer.parseInt(fileID));
+				ResultSet rs = ps.executeQuery();
 				while (rs.next()) {
 					// trx_id,payee_phone,amount,trx_status,LP_trx_status,top_up_status,insert_time,payment_method,file_name,updated_file_name
 					trx_history += "\"" + rs.getString(1) + "\"" + ",";
@@ -5943,7 +6107,7 @@ public class UserDBOperations {
 				errorMessage = "fetched topup history successfully.";
 
 				rs.close();
-				weTopUpDS.closePreparedStatement();
+				ps.close();
 			} catch (SQLException e) {
 				e.printStackTrace();
 				errorCode = "11";
@@ -6116,9 +6280,9 @@ public class UserDBOperations {
 
 			String sql = "select phone, amount, operator, isPostpaid, insert_date, flag, file_row_id from file_topup_queue where file_id=? order by file_row_id asc limit 1000";
 			try {
-				weTopUpDS.prepareStatement(sql);
-				weTopUpDS.getPreparedStatement().setString(1, fileID);
-				ResultSet rs = weTopUpDS.executeQuery();
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+				ps.setString(1, fileID);
+				ResultSet rs = ps.executeQuery();
 				while (rs.next()) {
 					file_details += "\"" + rs.getString(1) + "\"" + ",";
 					file_details += "\"" + rs.getString(2) + "\"" + ",";
@@ -6136,7 +6300,7 @@ public class UserDBOperations {
 				errorMessage = "fetchUploadedFileDetails : successful";
 
 				rs.close();
-				weTopUpDS.closePreparedStatement();
+				ps.close();
 			} catch (SQLException e) {
 				e.printStackTrace();
 				errorCode = "11";
@@ -6188,17 +6352,22 @@ public class UserDBOperations {
 			
 			String sqlQuery = "INSERT INTO file_dump_query (`user_id`,`query`,`output_type`) VALUES (?,?,?)";
 			try {
-				weTopUpDS.prepareStatement(sqlQuery, true);
-				weTopUpDS.getPreparedStatement().setString(1, userID);
-				weTopUpDS.getPreparedStatement().setString(2, sql);
-				weTopUpDS.getPreparedStatement().setString(3, outputType);
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sqlQuery, true);
+				ps.setString(1, userID);
+				ps.setString(2, sql);
+				ps.setString(3, outputType);
 				
 				errorCode = "0";
 				errorMessage = "Successfully Inserted";
-				weTopUpDS.execute();
-				downloadID = getNewInsertID();
+				ps.execute();
+//				downloadID = getNewInsertID();
+				ResultSet rs = ps.getGeneratedKeys();
+				if (rs.next()) {
+					downloadID = rs.getString(1);
+				}
+				rs.close();
 				LogWriter.LOGGER.info("downloadID : "+downloadID);
-				weTopUpDS.closePreparedStatement();
+				ps.close();
 			} catch (SQLException e) {
 				e.printStackTrace();
 				errorCode = "11";
@@ -6234,10 +6403,10 @@ public class UserDBOperations {
 			
 						
 			try {
-				weTopUpDS.prepareStatement(sql);
-				weTopUpDS.getPreparedStatement().setInt(1, Integer.parseInt(fileID));
-				weTopUpDS.getPreparedStatement().setInt(2, Integer.parseInt(userID));
-				ResultSet rs = weTopUpDS.executeQuery();
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+				ps.setInt(1, Integer.parseInt(fileID));
+				ps.setInt(2, Integer.parseInt(userID));
+				ResultSet rs = ps.executeQuery();
 				while (rs.next()) {
 					invalidRows += "\"" + rs.getString(1) + "\"" + ",";
 					invalidRows += "\"" + rs.getString(2) + "\"" + ",";
@@ -6253,7 +6422,7 @@ public class UserDBOperations {
 				errorMessage = "fetchUploadedFileDetails : successful";
 
 				rs.close();
-				weTopUpDS.closePreparedStatement();
+				ps.close();
 			} catch (SQLException e) {
 				e.printStackTrace();
 				errorCode = "11";
@@ -6451,13 +6620,13 @@ public class UserDBOperations {
 		String sql = "update topup_file_info set status=? where id=? and user_id=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setInt(1, status);
-			weTopUpDS.getPreparedStatement().setInt(2, Integer.parseInt(fileID));
-			weTopUpDS.getPreparedStatement().setInt(3, Integer.parseInt(userID));
-			weTopUpDS.execute();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setInt(1, status);
+			ps.setInt(2, Integer.parseInt(fileID));
+			ps.setInt(3, Integer.parseInt(userID));
+			ps.execute();
 			flag = true;
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			LogWriter.LOGGER.severe(e.getMessage());
@@ -6471,15 +6640,15 @@ public class UserDBOperations {
 		String sql = "SELECT status FROM topup_file_info where id = ? and user_id = ?";
 		int status = -1;
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setInt(1, Integer.parseInt(id));
-			weTopUpDS.getPreparedStatement().setInt(2, Integer.parseInt(userID));
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setInt(1, Integer.parseInt(id));
+			ps.setInt(2, Integer.parseInt(userID));
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				status = rs.getInt(1);
 			}
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			LogWriter.LOGGER.severe(e.getMessage());
@@ -6498,14 +6667,14 @@ public class UserDBOperations {
 		String sql = "SELECT count(*) FROM `admins_info` WHERE user_id=?";
 		int count = 0;
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, id);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, id);
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				count = rs.getInt(1);
 			}
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			LogWriter.LOGGER.severe(e.getMessage());
@@ -6524,15 +6693,15 @@ public class UserDBOperations {
 		String sql = "SELECT count(*) FROM `users_info` WHERE user_id=? and user_type =?";
 		int count = 0;
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, id);
-			weTopUpDS.getPreparedStatement().setInt(2, 3); // for admin
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, id);
+			ps.setInt(2, 3); // for admin
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				count = rs.getInt(1);
 			}
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			LogWriter.LOGGER.severe(e.getMessage());
@@ -6576,9 +6745,9 @@ public class UserDBOperations {
 		String insertTime = "";
 		
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setInt(1, Integer.parseInt(fileID));
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setInt(1, Integer.parseInt(fileID));
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				validCount = rs.getString(1);				
 				amount = rs.getString(2);
@@ -6596,7 +6765,7 @@ public class UserDBOperations {
 			jsonEncoder.addElement("updatedFileName", updatedFileName);
 			jsonEncoder.addElement("insertTime", insertTime);
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			errorCode = "11";
@@ -6615,14 +6784,14 @@ public class UserDBOperations {
 		String sql = "select count(*) from file_topup_queue where file_id=? group by file_id";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, id);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, id);
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				count = rs.getInt(1);
 			}
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			LogWriter.LOGGER.severe(e.getMessage());
@@ -6643,14 +6812,14 @@ public class UserDBOperations {
 		String sql = "SELECT operator_balance FROM `shadow_balance_info` WHERE id=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, id);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, id);
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				balance = rs.getDouble(1);
 			}
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			LogWriter.LOGGER.severe(e.getMessage());
@@ -6664,16 +6833,16 @@ public class UserDBOperations {
 		String sql = "UPDATE shadow_balance_info SET operator_balance = (operator_balance - ?) WHERE id = ?";
 
 		try {
-			weTopUpDS.prepareStatement(sql,true);
-			weTopUpDS.getPreparedStatement().setInt(1, amount);
-			weTopUpDS.getPreparedStatement().setString(2, id);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setInt(1, amount);
+			ps.setString(2, id);
 			
-			long count = weTopUpDS.executeUpdate();
-			weTopUpDS.closePreparedStatement();
+			long count = ps.executeUpdate();
+			ps.close();
 			if(count>0) {
 				flag = true;
 			}
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			LogWriter.LOGGER.severe(e.getMessage());
@@ -6696,16 +6865,16 @@ public class UserDBOperations {
 		String sql = "UPDATE shadow_balance_info SET operator_balance = (operator_balance + ?) WHERE id = ?";
 
 		try {
-			weTopUpDS.prepareStatement(sql,true);
-			weTopUpDS.getPreparedStatement().setInt(1, amount);
-			weTopUpDS.getPreparedStatement().setString(2, id);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setInt(1, amount);
+			ps.setString(2, id);
 			
-			long count = weTopUpDS.executeUpdate();
-			weTopUpDS.closePreparedStatement();
+			long count = ps.executeUpdate();
+			ps.close();
 			if(count>0) {
 				flag = true;
 			}
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			LogWriter.LOGGER.severe(e.getMessage());
@@ -6724,14 +6893,14 @@ public class UserDBOperations {
 		String sql = "SELECT operator_balance FROM `balance_info` WHERE id=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, id);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, id);
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				balance = rs.getDouble(1);
 			}
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			LogWriter.LOGGER.severe(e.getMessage());
@@ -6748,14 +6917,14 @@ public class UserDBOperations {
 		String sql = "SELECT topup_gateway FROM operator_configuration where id=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, id);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, id);
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				opFlag = rs.getString(1);
 			}
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			LogWriter.LOGGER.severe(e.getMessage());
@@ -6789,9 +6958,9 @@ public class UserDBOperations {
 		String sql = "SELECT user_name FROM users_info where user_id=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, id);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, id);
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				userName = rs.getString(1);
 			}
@@ -6809,10 +6978,10 @@ public class UserDBOperations {
 		String sql = "SELECT user_id FROM users_info where phone=? or user_email=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, msisdnNormalize(id));
-			weTopUpDS.getPreparedStatement().setString(2, id);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, msisdnNormalize(id));
+			ps.setString(2, id);
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				userID = rs.getString(1);
 			}
@@ -6830,9 +6999,9 @@ public class UserDBOperations {
 		String sql = "SELECT user_name FROM users_info where phone=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, phone);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, phone);
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				userName = rs.getString(1);
 			}
@@ -6850,13 +7019,14 @@ public class UserDBOperations {
 		String sql = "SELECT stock_configuration FROM users_info where user_id=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, userID);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, userID);
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				stock_configuration = rs.getString(1);
 			}
 			rs.close();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			LogWriter.LOGGER.severe(e.getMessage());
@@ -6870,13 +7040,14 @@ public class UserDBOperations {
 		String sql = "SELECT api_op_grants FROM users_info where user_id=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, userID);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, userID);
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				api_op_grants = rs.getString(1);
 			}
 			rs.close();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			LogWriter.LOGGER.severe(e.getMessage());
@@ -6890,13 +7061,14 @@ public class UserDBOperations {
 		String sql = "SELECT user_email FROM users_info where user_id=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, userID);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, userID);
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				userEmail = rs.getString(1);
 			}
 			rs.close();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			LogWriter.LOGGER.severe(e.getMessage());
@@ -6910,13 +7082,14 @@ public class UserDBOperations {
 		String sql = "SELECT user_name FROM users_info where user_id=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, userID);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, userID);
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				user_name = rs.getString(1);
 			}
 			rs.close();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			LogWriter.LOGGER.severe(e.getMessage());
@@ -6930,13 +7103,14 @@ public class UserDBOperations {
 		String sql = "SELECT phone FROM users_info where user_id=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, userID);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, userID);
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				userPhone = rs.getString(1);
 			}
 			rs.close();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			LogWriter.LOGGER.severe(e.getMessage());
@@ -6951,14 +7125,14 @@ public class UserDBOperations {
 		String sql = "SELECT user_type FROM users_info where user_id=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, userID);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, userID);
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				userType = rs.getString(1);
 			}
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			LogWriter.LOGGER.severe(e.getMessage());
@@ -6972,14 +7146,14 @@ public class UserDBOperations {
 		String sql = "SELECT balance FROM users_info where user_id=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, user_id);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, user_id);
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				balance = rs.getDouble(1);
 			}
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			LogWriter.LOGGER.severe(e.getMessage());
@@ -6993,15 +7167,15 @@ public class UserDBOperations {
 		String sql = "UPDATE users_info SET balance = round((balance - ?),6) WHERE user_id = ?";
 
 		try {
-			weTopUpDS.prepareStatement(sql,true);
-			weTopUpDS.getPreparedStatement().setDouble(1, amount);
-			weTopUpDS.getPreparedStatement().setString(2, user_id);
-			long count = weTopUpDS.executeUpdate();
-			weTopUpDS.closePreparedStatement();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setDouble(1, amount);
+			ps.setString(2, user_id);
+			long count = ps.executeUpdate();
+			ps.close();
 			if(count>0) {
 				flag = true;
 			}
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			LogWriter.LOGGER.severe(e.getMessage());
@@ -7015,12 +7189,12 @@ public class UserDBOperations {
 		String sql = "UPDATE users_info SET balance = round((balance + ?),6) WHERE user_id = ?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setDouble(1, amount);
-			weTopUpDS.getPreparedStatement().setString(2, user_id);
-			weTopUpDS.execute();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setDouble(1, amount);
+			ps.setString(2, user_id);
+			ps.execute();
 			flag = true;
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			LogWriter.LOGGER.severe(e.getMessage());
@@ -7036,12 +7210,12 @@ public class UserDBOperations {
 		String sql = "UPDATE users_info SET balance =  round((balance + ?),6) WHERE phone=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setDouble(1, amount);
-			weTopUpDS.getPreparedStatement().setString(2, msisdnNormalize(payee_phone));
-			weTopUpDS.execute();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setDouble(1, amount);
+			ps.setString(2, msisdnNormalize(payee_phone));
+			ps.execute();
 			flag = true;
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 			LogWriter.LOGGER.severe(e.getMessage());

@@ -1,5 +1,6 @@
 package org.spider.topupservices.DBOperations;
 
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
@@ -87,12 +88,12 @@ public class UserInfo {
 		String sql="SELECT user_id, user_name, case when user_email is null then '' else user_email end as user_email, user_type, phone, status,balance,distributor_id,isPhoneVerified, dp_img, stock_configuration FROM users_info where (user_email=? or phone=?)";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, id);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, id);
 			id=msisdnNormalize(id);
-			weTopUpDS.getPreparedStatement().setString(2, id);
+			ps.setString(2, id);
 			
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				if(rs.getString("status").equals("10")) {
 					errorCode="50";
@@ -123,8 +124,8 @@ public class UserInfo {
 				this.logWriter.setStatus(0);
 				this.logWriter.appendLog("fu:F");
 			}
-			weTopUpDS.closeResultSet();
-			weTopUpDS.closePreparedStatement();
+			rs.close();
+			ps.close();
 		}catch(SQLException e){
 			errorCode= "-2";
 			errorMessage = "SQLException.";
@@ -164,12 +165,12 @@ public class UserInfo {
 		String sql="SELECT user_id, user_name, case when user_email is null then '' else user_email end as user_email, phone, status,dp_img FROM admins_info where (user_email=? or phone=?)";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, id);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, id);
 			id=msisdnNormalize(id);
-			weTopUpDS.getPreparedStatement().setString(2, id);
+			ps.setString(2, id);
 			
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				if(rs.getString("status").equals("10")) {
 					errorCode="50";
@@ -194,8 +195,8 @@ public class UserInfo {
 				this.logWriter.setStatus(0);
 				this.logWriter.appendLog("fu:F");
 			}
-			weTopUpDS.closeResultSet();
-			weTopUpDS.closePreparedStatement();
+			rs.close();
+			ps.close();
 		}catch(SQLException e){
 			errorCode= "-2";
 			errorMessage = "SQLException.";
@@ -227,12 +228,12 @@ public class UserInfo {
 		String sql="SELECT user_id, balance, api_token_validity FROM users_info where (user_email=? or phone=?)";
 		LogWriter.LOGGER.info("id : "+id);
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, id);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, id);
 			id=msisdnNormalize(id);
-			weTopUpDS.getPreparedStatement().setString(2, id);
+			ps.setString(2, id);
 			
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				user_id = rs.getString("user_id");
 				validity = rs.getInt("api_token_validity");
@@ -244,8 +245,8 @@ public class UserInfo {
 			}else {
 				errorCode="0020";
 			}
-			weTopUpDS.closeResultSet();
-			weTopUpDS.closePreparedStatement();
+			rs.close();
+			ps.close();
 		}catch(SQLException e){
 			errorCode= "0020";
 			LogWriter.LOGGER.severe(e.getMessage());
@@ -285,12 +286,12 @@ public class UserInfo {
 		String sql="SELECT case when u.user_email is null then '' else u.user_email end as user_email, u.phone FROM users_info u where (u.user_email=? or u.phone=?)";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, id);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, id);
 			id=msisdnNormalize(id);
-			weTopUpDS.getPreparedStatement().setString(2, id);
+			ps.setString(2, id);
 			
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				jsonEncoder.addElement("email", rs.getString("user_email"));
 				jsonEncoder.addElement("phoneNumber", rs.getString("phone"));
@@ -305,8 +306,8 @@ public class UserInfo {
 				this.logWriter.setStatus(0);
 				this.logWriter.appendLog("fu:F");
 			}
-			weTopUpDS.closeResultSet();
-			weTopUpDS.closePreparedStatement();
+			rs.close();
+			ps.close();
 		}catch(SQLException e){
 			errorCode= "-2";
 			errorMessage = "SQLException.";
@@ -351,12 +352,12 @@ public class UserInfo {
 		String sql="SELECT balance FROM users_info where (user_email=? or phone=?)";
 		LogWriter.LOGGER.info("id : "+user_id);
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, user_id);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, user_id);
 			String id=msisdnNormalize(user_id);
-			weTopUpDS.getPreparedStatement().setString(2, id);
+			ps.setString(2, id);
 			
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 			
 				jsonEncoder.addElement("balance", rs.getString("balance"));
@@ -365,6 +366,9 @@ public class UserInfo {
 			}else {
 				errorCode="0020";
 			}
+			
+			rs.close();
+			ps.close();
 		}catch(Exception e) {
 			e.printStackTrace();
 			errorCode="0031"; // Exception occurred while getting SQL result
@@ -381,14 +385,16 @@ public class UserInfo {
 		String sql="SELECT phone FROM users_info where user_auth_token=?";
 		this.logWriter.appendLog("userAuthToken : "+userAuthToken);
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, userAuthToken);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, userAuthToken);
 			
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				retval = rs.getString("phone");
 				this.logWriter.appendLog("phone : "+retval);
 			}
+			rs.close();
+			ps.close();
 		}catch(Exception e) {
 			e.printStackTrace();
 		}
@@ -407,10 +413,10 @@ public class UserInfo {
 		String sql="SELECT balance FROM users_info where user_id=?";
 		LogWriter.LOGGER.info("id : "+user_id);
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, user_id);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, user_id);
 			
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 			
 				jsonEncoder.addElement("balance", rs.getString("balance"));
@@ -419,6 +425,8 @@ public class UserInfo {
 			}else {
 				errorCode="0020";
 			}
+			rs.close();
+			ps.close();
 		}catch(Exception e) {
 			e.printStackTrace();
 			errorCode="0025"; // Exception occurred while getting SQL result
@@ -451,10 +459,10 @@ public class UserInfo {
 				String sql="SELECT user_id, balance FROM users_info where user_id=?";
 
 				try {
-					weTopUpDS.prepareStatement(sql);
-					weTopUpDS.getPreparedStatement().setString(1, user_id);
+					PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+					ps.setString(1, user_id);
 					
-					ResultSet rs = weTopUpDS.executeQuery();
+					ResultSet rs = ps.executeQuery();
 					if (rs.next()) {
 						jsonEncoder.addElement("user_id", rs.getString("user_id"));
 						jsonEncoder.addElement("balance", rs.getString("balance"));
@@ -469,8 +477,8 @@ public class UserInfo {
 						this.logWriter.setStatus(0);
 						this.logWriter.appendLog("fu:F");
 					}
-					weTopUpDS.closeResultSet();
-					weTopUpDS.closePreparedStatement();
+					rs.close();
+					ps.close();
 				}catch(SQLException e){
 					errorCode= "-2";
 					errorMessage = "SQLException.";
@@ -515,10 +523,10 @@ public class UserInfo {
 		String sql="SELECT u.user_id, case when u.user_name is null then '' else u.user_name end as user_name, case when u.user_email is null then '' else u.user_email end as user_email, u.user_type, u.phone, u.status,u.isPhoneVerified FROM users_info u where u.key=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, key);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, key);
 			
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				jsonEncoder.addElement("id", NullPointerExceptionHandler.isNullOrEmpty(rs.getString("user_id"))?"":rs.getString("user_id"));
 				jsonEncoder.addElement("username", NullPointerExceptionHandler.isNullOrEmpty(rs.getString("user_name"))?"":rs.getString("user_name"));
@@ -539,8 +547,8 @@ public class UserInfo {
 				this.logWriter.setStatus(0);
 				this.logWriter.appendLog("fu:F");
 			}
-			weTopUpDS.closeResultSet();
-			weTopUpDS.closePreparedStatement();
+			rs.close();
+			ps.close();
 		}catch(SQLException e){
 			errorCode= "-2";
 			errorMessage = "SQLException.";
@@ -580,10 +588,10 @@ public class UserInfo {
 		String sql="SELECT status FROM users_info where user_id=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, user_id);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, user_id);
 			
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				jsonEncoder.addElement("user_id", user_id);
 				jsonEncoder.addElement("status", rs.getString("status"));
@@ -598,8 +606,8 @@ public class UserInfo {
 				this.logWriter.setStatus(0);
 				this.logWriter.appendLog("fu:F");
 			}
-			weTopUpDS.closeResultSet();
-			weTopUpDS.closePreparedStatement();
+			rs.close();
+			ps.close();
 		}catch(SQLException e){
 			errorCode= "-2";
 			errorMessage = "SQLException.";

@@ -7,6 +7,7 @@ import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
@@ -146,14 +147,14 @@ public class Login {
 			
 			LogWriter.LOGGER.info("Pin retryCount : "+retryCount);
 			
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, loginCredential);
-			weTopUpDS.getPreparedStatement().setString(2, this.msisdnNormalize(loginCredential));
-			weTopUpDS.getPreparedStatement().setString(3, NullPointerExceptionHandler.isNullOrEmpty(password)?"":password);
-			weTopUpDS.getPreparedStatement().setString(4, SecretKey.SECRETKEY);
-			weTopUpDS.getPreparedStatement().setString(5, NullPointerExceptionHandler.isNullOrEmpty(userAuthToken)?"":userAuthToken);
-			weTopUpDS.getPreparedStatement().setString(6, NullPointerExceptionHandler.isNullOrEmpty(pin)?"":pin);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, loginCredential);
+			ps.setString(2, this.msisdnNormalize(loginCredential));
+			ps.setString(3, NullPointerExceptionHandler.isNullOrEmpty(password)?"":password);
+			ps.setString(4, SecretKey.SECRETKEY);
+			ps.setString(5, NullPointerExceptionHandler.isNullOrEmpty(userAuthToken)?"":userAuthToken);
+			ps.setString(6, NullPointerExceptionHandler.isNullOrEmpty(pin)?"":pin);
+			ResultSet rs = ps.executeQuery();
 			
 			if(rs.next()) {
 				retval=rs.getInt(1);
@@ -178,8 +179,8 @@ public class Login {
 				errorMessage = "User does not exist.";
 				increasePinRetryCount(this.msisdnNormalize(loginCredential));
 			}
-			weTopUpDS.closeResultSet();
-			weTopUpDS.closePreparedStatement();			
+			rs.close();
+			ps.close();			
 		}catch(NullPointerException e) {
 			increasePinRetryCount(this.msisdnNormalize(loginCredential));
 			errorCode="-5";//default errorCode
@@ -189,18 +190,6 @@ public class Login {
 		catch(Exception e){
 			errorCode="-3";//default errorCode
 			errorMessage = "General Exception.";
-			if(weTopUpDS.getConnection() != null) {
-				try {
-					weTopUpDS.closeResultSet();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-				try {
-					weTopUpDS.closePreparedStatement();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-			}
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 
@@ -269,13 +258,13 @@ public class Login {
 //			return jsonEncoder;
 //		}
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, loginCredential);
-			weTopUpDS.getPreparedStatement().setString(2, this.msisdnNormalize(loginCredential));
-			weTopUpDS.getPreparedStatement().setString(3, NullPointerExceptionHandler.isNullOrEmpty(password)?"":password);
-			weTopUpDS.getPreparedStatement().setString(4, SecretKey.ADMINSECRETKEY);
-			weTopUpDS.getPreparedStatement().setString(5, NullPointerExceptionHandler.isNullOrEmpty(pin)?"":pin);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, loginCredential);
+			ps.setString(2, this.msisdnNormalize(loginCredential));
+			ps.setString(3, NullPointerExceptionHandler.isNullOrEmpty(password)?"":password);
+			ps.setString(4, SecretKey.ADMINSECRETKEY);
+			ps.setString(5, NullPointerExceptionHandler.isNullOrEmpty(pin)?"":pin);
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				retval=rs.getString(1);
 				LogWriter.LOGGER.info("Admin count:"+retval);
@@ -288,8 +277,8 @@ public class Login {
 				errorCode="0";
 				errorMessage = "Admin is activated.";
 			}
-			weTopUpDS.closeResultSet();
-			weTopUpDS.closePreparedStatement();
+			rs.close();
+			ps.close();
 		}catch(NullPointerException e) {
 			errorCode="-5";//default errorCode
 			errorMessage = "Admin does not exist.";
@@ -298,18 +287,7 @@ public class Login {
 		catch(Exception e){
 			errorCode="-3";//default errorCode
 			errorMessage = "General Exception.";
-			if(weTopUpDS.getConnection() != null) {
-				try {
-					weTopUpDS.closeResultSet();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-				try {
-					weTopUpDS.closePreparedStatement();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-			}
+			
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 
@@ -322,8 +300,8 @@ public class Login {
 	
 	public String verifyGoogle(String gtoken) throws Exception {
 		String urlReq = "https://10.10.1.13:8443/HttpReceiver/HttpReceiver?destinationName=spidertopupopcore&destinationType=queue&clientid=spidertopupopcore&target=ENGINE&LoadConf=N"
-				+ "&message={\"appname\":\"WeTopUpRechargeServices\",\"apppass\":\"2441139%26WE\",\"gtoken\":\"" + gtoken + "\"}&reply=true&action=verifyGtoken";
-		String data = "";
+				+ "&reply=true&action=verifyGtoken";
+		String data = "{\"appname\":\"WeTopUpRechargeServices\",\"apppass\":\"2441139&WE\",\"gtoken\":\"" + gtoken + "\"}";
 		JsonObject personObject1;
 		String response = "";
 
@@ -373,13 +351,13 @@ public class Login {
 		String sql="select case when count(*)=0 then 1 else 0 end as counter, min(status) as status from users_info where (user_email=? or phone=?) and api_key_enc=AES_ENCRYPT(?,concat_ws('',?,api_key_seed,api_key_seed,api_key_seed))";
 		
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, loginCredential);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, loginCredential);
 			loginCredential=this.msisdnNormalize(loginCredential);
-			weTopUpDS.getPreparedStatement().setString(2, loginCredential);
-			weTopUpDS.getPreparedStatement().setString(3, password);
-			weTopUpDS.getPreparedStatement().setString(4, SecretKey.SECRETKEY);
-			ResultSet rs = weTopUpDS.executeQuery();
+			ps.setString(2, loginCredential);
+			ps.setString(3, password);
+			ps.setString(4, SecretKey.SECRETKEY);
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				retval=rs.getString(1);
 				LogWriter.LOGGER.info("User count:"+retval);
@@ -392,8 +370,8 @@ public class Login {
 				errorCode="0";
 				errorMessage = "User is activated.";
 			}
-			weTopUpDS.closeResultSet();
-			weTopUpDS.closePreparedStatement();
+			rs.close();
+			ps.close();
 		}catch(NullPointerException e) {
 			errorCode="-5";//default errorCode
 			errorMessage = "User does not exist.";
@@ -402,18 +380,6 @@ public class Login {
 		catch(Exception e){
 			errorCode="-3";//default errorCode
 			errorMessage = "General Exception.";
-			if(weTopUpDS.getConnection() != null) {
-				try {
-					weTopUpDS.closeResultSet();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-				try {
-					weTopUpDS.closePreparedStatement();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-			}
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 
@@ -449,11 +415,11 @@ public class Login {
 			loginCredential=this.msisdnNormalize(loginCredential);
 		}
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, loginCredential);
-			weTopUpDS.getPreparedStatement().setString(2, password);
-			weTopUpDS.getPreparedStatement().setString(3, SecretKey.SECRETKEY);
-			ResultSet rs = weTopUpDS.executeQuery();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, loginCredential);
+			ps.setString(2, password);
+			ps.setString(3, SecretKey.SECRETKEY);
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				retval=rs.getString(1);
 				LogWriter.LOGGER.info("User count:"+retval);
@@ -466,8 +432,8 @@ public class Login {
 				errorCode="0";
 				errorMessage = "User is activated.";
 			}
-			weTopUpDS.closeResultSet();
-			weTopUpDS.closePreparedStatement();
+			rs.close();
+			ps.close();
 		}catch(NullPointerException e) {
 			errorCode="-5";//default errorCode
 			errorMessage = "User does not exist.";
@@ -476,18 +442,6 @@ public class Login {
 		catch(Exception e){
 			errorCode="-3";//default errorCode
 			errorMessage = "General Exception.";
-			if(weTopUpDS.getConnection() != null) {
-				try {
-					weTopUpDS.closeResultSet();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-				try {
-					weTopUpDS.closePreparedStatement();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-			}
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 
@@ -576,11 +530,11 @@ public class Login {
 		String errorMessage = "user not found.";
 		String sql="select count(*) as counter, CASE WHEN max(status) IS NULL THEN 0 ELSE max(status) END AS status, CASE WHEN max(user_auth_token) IS NULL THEN '' ELSE max(user_auth_token) END AS userAuthToken from users_info where user_email=? or phone=?";
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, loginCredential);
-			weTopUpDS.getPreparedStatement().setString(2, this.msisdnNormalize(loginCredential));
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, loginCredential);
+			ps.setString(2, this.msisdnNormalize(loginCredential));
 			
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				userFlag=rs.getString(1);
 				userStatus=rs.getString(2);
@@ -591,8 +545,8 @@ public class Login {
 				jsonEncoder.addElement("pinFlag", isPinSet(loginCredential)?"0":"5");
 				jsonEncoder.addElement("userAuthToken", userAuthToken);
 			}
-			weTopUpDS.closeResultSet();
-			weTopUpDS.closePreparedStatement();
+			rs.close();
+			ps.close();
 			if(userStatus.equals("10")) {
 				errorCode="50";
 				errorMessage = "User is blocked.";
@@ -606,22 +560,6 @@ public class Login {
 		catch(Exception e){
 			errorCode="-3";//default errorCode
 			errorMessage = "General Exception.";
-			if(weTopUpDS.getConnection() != null) {
-				try {
-					weTopUpDS.closeResultSet();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				} catch (Exception e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-				try {
-					weTopUpDS.closePreparedStatement();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				} catch (Exception e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-			}
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		jsonEncoder.addElement("ErrorCode", errorCode);
@@ -642,20 +580,20 @@ public class Login {
 		String sql="select count(*) as counter, CASE WHEN max(status) IS NULL THEN 0 ELSE max(status) END AS status from users_info where user_email=? or phone=?";
 		
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, email);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, email);
 			phone=this.msisdnNormalize(phone);
-			weTopUpDS.getPreparedStatement().setString(2, phone);
+			ps.setString(2, phone);
 			
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				userFlag=rs.getString(1);
 				userStatus=rs.getString(2);
 				errorCode="0";
 				errorMessage = "checked user successfully.";
 			}
-			weTopUpDS.closeResultSet();
-			weTopUpDS.closePreparedStatement();
+			rs.close();
+			ps.close();
 			
 			if(userStatus.equals("10")) {
 				errorCode="50";
@@ -669,22 +607,6 @@ public class Login {
 		catch(Exception e){
 			errorCode="-3";//default errorCode
 			errorMessage = "General Exception.";
-			if(weTopUpDS.getConnection() != null) {
-				try {
-					weTopUpDS.closeResultSet();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				} catch (Exception e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-				try {
-					weTopUpDS.closePreparedStatement();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				} catch (Exception e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-			}
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		jsonEncoder.addElement("ErrorCode", errorCode);
@@ -707,11 +629,11 @@ public class Login {
 		String sql = "UPDATE users_info t SET t.otp=?, t.last_sent_otp=NOW(), t.otp_expire = NOW() + interval 10 minute WHERE (t.user_email=?) and t.user_id > 0";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, OTP);
-			weTopUpDS.getPreparedStatement().setString(2, email);
-			weTopUpDS.execute();
-			weTopUpDS.closePreparedStatement();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, OTP);
+			ps.setString(2, email);
+			ps.execute();
+			ps.close();
 			errorCode = "0";
 			errorMessage = "Update successful.";
 			
@@ -744,11 +666,11 @@ public class Login {
 		String sql = "select count(*) from users_info t where t.otp=? and t.otp_expire > NOW() and t.user_email=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, OTP);
-			weTopUpDS.getPreparedStatement().setString(2, email);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, OTP);
+			ps.setString(2, email);
 			
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
 				count = rs.getInt(1);
 			}
@@ -766,7 +688,7 @@ public class Login {
 				errorMessage = "OTP match failed.";
 			}
 			rs.close();
-			weTopUpDS.closePreparedStatement();			
+			ps.close();			
 		} catch (SQLException e) {
 			LogWriter.LOGGER.severe(e.getMessage());
 			errorCode = "11";
@@ -803,11 +725,11 @@ public class Login {
 				String OTP = RandomStringGenerator.getRandomString("0123456789", 6);
 				
 				try {
-					weTopUpDS.prepareStatement(sql);
-					weTopUpDS.getPreparedStatement().setString(1, OTP);
-					weTopUpDS.getPreparedStatement().setString(2, email);
-					weTopUpDS.execute();
-					weTopUpDS.closePreparedStatement();
+					PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+					ps.setString(1, OTP);
+					ps.setString(2, email);
+					ps.execute();
+					ps.close();
 					errorCode = "0";
 					errorMessage = "Update successful.";
 					
@@ -859,12 +781,12 @@ public class Login {
 				String OTP = RandomStringGenerator.getRandomString("0123456789", 4);
 				
 				try {
-					weTopUpDS.prepareStatement(sql);
-					weTopUpDS.getPreparedStatement().setString(1, OTP);
-					weTopUpDS.getPreparedStatement().setInt(2, 0);
-					weTopUpDS.getPreparedStatement().setString(3, phone);
-					weTopUpDS.execute();
-					weTopUpDS.closePreparedStatement();
+					PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+					ps.setString(1, OTP);
+					ps.setInt(2, 0);
+					ps.setString(3, phone);
+					ps.execute();
+					ps.close();
 					errorCode = "0";
 					errorMessage = "Update successful.";
 					
@@ -910,11 +832,11 @@ public class Login {
 			String sql = "select count(*) from users_info t where t.otp=? and t.otp_expire > NOW() and t.user_email=?";
 
 			try {
-				weTopUpDS.prepareStatement(sql);
-				weTopUpDS.getPreparedStatement().setString(1, OTP);
-				weTopUpDS.getPreparedStatement().setString(2, email);
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+				ps.setString(1, OTP);
+				ps.setString(2, email);
 				
-				ResultSet rs = weTopUpDS.executeQuery();
+				ResultSet rs = ps.executeQuery();
 				if (rs.next()) {
 					count = rs.getInt(1);
 				}
@@ -932,7 +854,7 @@ public class Login {
 					errorMessage = "OTP match failed.";
 				}
 				rs.close();
-				weTopUpDS.closePreparedStatement();			
+				ps.close();			
 			} catch (SQLException e) {
 				LogWriter.LOGGER.severe(e.getMessage());
 				errorCode = "11";
@@ -954,34 +876,22 @@ public class Login {
 		boolean flag = false;
 		String sql="select count(*) from users_info t where t.pin is not null and t.pin!='' and (t.phone=? or t.user_email =?)";
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, this.msisdnNormalize(creds));
-			weTopUpDS.getPreparedStatement().setString(2, creds);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, this.msisdnNormalize(creds));
+			ps.setString(2, creds);
 			
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				if(rs.getInt(1)==1) {
 					flag = true;
 				}
 			}
-			weTopUpDS.closeResultSet();
-			weTopUpDS.closePreparedStatement();
+			rs.close();
+			ps.close();
 		}catch(NullPointerException e) {
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		catch(Exception e){
-			if(weTopUpDS.getConnection() != null) {
-				try {
-					weTopUpDS.closeResultSet();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-				try {
-					weTopUpDS.closePreparedStatement();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-			}
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		
@@ -1009,12 +919,12 @@ public class Login {
 			String sql = "select count(*) from users_info t where t.pin=? and (t.phone=? or t.user_email =?)";
 
 			try {
-				weTopUpDS.prepareStatement(sql);
-				weTopUpDS.getPreparedStatement().setString(1, pin);
-				weTopUpDS.getPreparedStatement().setString(2, this.msisdnNormalize(creds));
-				weTopUpDS.getPreparedStatement().setString(3, creds);
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+				ps.setString(1, pin);
+				ps.setString(2, this.msisdnNormalize(creds));
+				ps.setString(3, creds);
 				
-				ResultSet rs = weTopUpDS.executeQuery();
+				ResultSet rs = ps.executeQuery();
 				if (rs.next()) {
 					count = rs.getInt(1);
 				}
@@ -1027,7 +937,7 @@ public class Login {
 					errorMessage = "PIN match failed.";
 				}
 				rs.close();
-				weTopUpDS.closePreparedStatement();			
+				ps.close();			
 			} catch (SQLException e) {
 				LogWriter.LOGGER.severe(e.getMessage());
 				errorCode = "11";
@@ -1063,11 +973,11 @@ public class Login {
 			String sql = "select count(*) from users_info t where t.otp=? and t.otp_expire > NOW() and t.otp_retry_count<=5 and t.phone=?";
 
 			try {
-				weTopUpDS.prepareStatement(sql);
-				weTopUpDS.getPreparedStatement().setString(1, OTP);
-				weTopUpDS.getPreparedStatement().setString(2, phone);
+				PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+				ps.setString(1, OTP);
+				ps.setString(2, phone);
 				
-				ResultSet rs = weTopUpDS.executeQuery();
+				ResultSet rs = ps.executeQuery();
 				if (rs.next()) {
 					count = rs.getInt(1);
 				}
@@ -1087,7 +997,7 @@ public class Login {
 					increaseOtpRetryCount(phone);
 				}
 				rs.close();
-				weTopUpDS.closePreparedStatement();			
+				ps.close();			
 			} catch (SQLException e) {
 				LogWriter.LOGGER.severe(e.getMessage());
 				errorCode = "11";
@@ -1110,33 +1020,21 @@ public class Login {
 		
 		String sql="select t.pin_retry_count from users_info t where (t.phone=? or t.user_email=?)";
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, this.msisdnNormalize(creds));
-			weTopUpDS.getPreparedStatement().setString(2, creds);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, this.msisdnNormalize(creds));
+			ps.setString(2, creds);
 			
 			
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				count = rs.getInt(1);
 			}
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		}catch(NullPointerException e) {
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		catch(Exception e){
-			if(weTopUpDS.getConnection() != null) {
-				try {
-					weTopUpDS.closeResultSet();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-				try {
-					weTopUpDS.closePreparedStatement();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-			}
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		
@@ -1147,31 +1045,19 @@ public class Login {
 		
 		String sql="select t.otp_retry_count from users_info t where t.phone=?";
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, phone);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, phone);
 			
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				count = rs.getInt(1);
 			}
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		}catch(NullPointerException e) {
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		catch(Exception e){
-			if(weTopUpDS.getConnection() != null) {
-				try {
-					weTopUpDS.closeResultSet();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-				try {
-					weTopUpDS.closePreparedStatement();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-			}
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		
@@ -1183,12 +1069,12 @@ public class Login {
 		String sql = "UPDATE users_info t SET user_auth_token = ? WHERE t.phone=? and t.user_id > 0";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, authKey);
-			weTopUpDS.getPreparedStatement().setString(2, this.msisdnNormalize(msisdn));
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, authKey);
+			ps.setString(2, this.msisdnNormalize(msisdn));
 			
-			long updateCount = weTopUpDS.executeUpdate();
-			weTopUpDS.closePreparedStatement();
+			long updateCount = ps.executeUpdate();
+			ps.close();
 			
 			if(updateCount>0) {
 				this.logWriter.appendLog("userAuthToken Update Successful : " + msisdn + " " +authKey);
@@ -1208,13 +1094,13 @@ public class Login {
 		String sql = "UPDATE users_info t SET status = ?, t.otp=null WHERE t.user_email=? and t.otp=? and t.user_id > 0";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setInt(1, 2);	//	email verified
-			weTopUpDS.getPreparedStatement().setString(2, email);
-			weTopUpDS.getPreparedStatement().setString(3, OTP);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setInt(1, 2);	//	email verified
+			ps.setString(2, email);
+			ps.setString(3, OTP);
 			
-			long updateCount = weTopUpDS.executeUpdate();
-			weTopUpDS.closePreparedStatement();
+			long updateCount = ps.executeUpdate();
+			ps.close();
 			
 			if(updateCount>0) {
 				flag = true;
@@ -1231,12 +1117,12 @@ public class Login {
 		String sql = "UPDATE users_info t SET status = ?, t.otp=null WHERE t.user_email=? and t.user_id > 0";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setInt(1, 2);	//	email verified
-			weTopUpDS.getPreparedStatement().setString(2, email);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setInt(1, 2);	//	email verified
+			ps.setString(2, email);
 			
-			long updateCount = weTopUpDS.executeUpdate();
-			weTopUpDS.closePreparedStatement();
+			long updateCount = ps.executeUpdate();
+			ps.close();
 			
 			if(updateCount>0) {
 				flag = true;
@@ -1256,13 +1142,13 @@ public class Login {
 		String sql = "UPDATE users_info t SET isPhoneVerified = ?, otp_retry_count=?, t.otp=null WHERE t.phone=? and t.otp=? and t.user_id > 0";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setInt(1, 1);	//	phone verified
-			weTopUpDS.getPreparedStatement().setInt(2, 0);	//	retry count reset
-			weTopUpDS.getPreparedStatement().setString(3, phone);
-			weTopUpDS.getPreparedStatement().setString(4, OTP);
-			weTopUpDS.execute();
-			weTopUpDS.closePreparedStatement();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setInt(1, 1);	//	phone verified
+			ps.setInt(2, 0);	//	retry count reset
+			ps.setString(3, phone);
+			ps.setString(4, OTP);
+			ps.execute();
+			ps.close();
 			errorCode = "0";
 			errorMessage = "Update successful.";
 			flag = true;
@@ -1288,12 +1174,12 @@ public class Login {
 				"else pin_retry_unlock end WHERE (t.phone=? or t.user_email=?) and t.user_id > 0 limit 1";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, cred);
-			weTopUpDS.getPreparedStatement().setString(2, cred);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, cred);
+			ps.setString(2, cred);
 			
-			weTopUpDS.execute();
-			weTopUpDS.closePreparedStatement();
+			ps.execute();
+			ps.close();
 			
 			flag = true;
 			LogWriter.LOGGER.info("PIN retry count increased.");
@@ -1311,12 +1197,12 @@ public class Login {
 		String sql = "UPDATE users_info t SET t.pin_retry_count=?, t.pin_retry_unlock=null WHERE (t.phone=? or t.user_email=?) and t.user_id > 0";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setInt(1, 0);	//	retry count reset
-			weTopUpDS.getPreparedStatement().setString(2, cred);
-			weTopUpDS.getPreparedStatement().setString(3, cred);
-			weTopUpDS.execute();
-			weTopUpDS.closePreparedStatement();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setInt(1, 0);	//	retry count reset
+			ps.setString(2, cred);
+			ps.setString(3, cred);
+			ps.execute();
+			ps.close();
 			errorCode = "0";
 			errorMessage = "Update successful.";
 			
@@ -1342,12 +1228,12 @@ public class Login {
 				"else last_sent_otp end WHERE (t.phone=? or t.user_email=?) and t.user_id > 0";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, creds);
-			weTopUpDS.getPreparedStatement().setString(2, creds);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, creds);
+			ps.setString(2, creds);
 			
-			weTopUpDS.execute();
-			weTopUpDS.closePreparedStatement();
+			ps.execute();
+			ps.close();
 			
 			flag = true;
 			LogWriter.LOGGER.info("OTP retry count increased.");
@@ -1370,16 +1256,16 @@ public class Login {
 //			loginCredential=this.msisdnNormalize(loginCredential);
 //		}
 //		try {
-//			weTopUpDS.prepareStatement(sql);
-//			weTopUpDS.getPreparedStatement().setString(1, loginCredential);
-//			ResultSet rs = weTopUpDS.executeQuery();
+//			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+//			ps.setString(1, loginCredential);
+//			ResultSet rs = ps.executeQuery();
 //			while (rs.next()) {
 //				userFlag=rs.getString(1);
 //				errorCode="0";
 //				errorMessage = "checked user successfully.";
 //			}
-//			weTopUpDS.closeResultSet();
-//			weTopUpDS.closePreparedStatement();
+//			rs.close();
+//			ps.close();
 //		}catch(NullPointerException e) {
 //			errorCode="-5";//default errorCode
 //			errorMessage = "User does not exist.";
@@ -1390,12 +1276,12 @@ public class Login {
 //			errorMessage = "General Exception.";
 //			if(weTopUpDS.getConnection() != null) {
 //				try {
-//					weTopUpDS.closeResultSet();
+//					rs.close();
 //				} catch (SQLException e1) {
 //					LogWriter.LOGGER.severe(e1.getMessage());
 //				}
 //				try {
-//					weTopUpDS.closePreparedStatement();
+//					ps.close();
 //				} catch (SQLException e1) {
 //					LogWriter.LOGGER.severe(e1.getMessage());
 //				}
@@ -1419,11 +1305,11 @@ public class Login {
 		String sql = "UPDATE users_info t SET t.key=? WHERE (t.user_email=?) and t.user_id > 0";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, key);
-			weTopUpDS.getPreparedStatement().setString(2, email);
-			weTopUpDS.execute();
-			weTopUpDS.closePreparedStatement();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, key);
+			ps.setString(2, email);
+			ps.execute();
+			ps.close();
 			errorCode = "0";
 			errorMessage = "Update successful.";
 		} catch (SQLException e) {
@@ -1446,16 +1332,16 @@ public class Login {
 		String sql = "update users_info set user_name=?, address=?, dp_img=?, doc_img_01=?, doc_img_02=?, doc_img_03=? where user_email=? and user_id>0";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, name);
-			weTopUpDS.getPreparedStatement().setString(2, address);
-			weTopUpDS.getPreparedStatement().setString(3, dp_img);
-			weTopUpDS.getPreparedStatement().setString(4, doc_img_01);
-			weTopUpDS.getPreparedStatement().setString(5, doc_img_02);
-			weTopUpDS.getPreparedStatement().setString(6, doc_img_03);
-			weTopUpDS.getPreparedStatement().setString(7, email);
-			weTopUpDS.execute();
-			weTopUpDS.closePreparedStatement();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, name);
+			ps.setString(2, address);
+			ps.setString(3, dp_img);
+			ps.setString(4, doc_img_01);
+			ps.setString(5, doc_img_02);
+			ps.setString(6, doc_img_03);
+			ps.setString(7, email);
+			ps.execute();
+			ps.close();
 			errorCode = "0";
 			errorMessage = "Update successful.";
 		} catch (SQLException e) {
@@ -1490,48 +1376,48 @@ public class Login {
 		String location = fetchUploadLocation();
 		
 		try {
-			weTopUpDS.prepareStatement(sql);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
 			
-			weTopUpDS.getPreparedStatement().setString(1, email);
-			weTopUpDS.getPreparedStatement().setString(2, email);
-			weTopUpDS.getPreparedStatement().setString(3, email);
+			ps.setString(1, email);
+			ps.setString(2, email);
+			ps.setString(3, email);
 			
-			weTopUpDS.getPreparedStatement().setString(4, name);
-			weTopUpDS.getPreparedStatement().setString(5, name);
-			weTopUpDS.getPreparedStatement().setString(6, name);
+			ps.setString(4, name);
+			ps.setString(5, name);
+			ps.setString(6, name);
 			
-			weTopUpDS.getPreparedStatement().setString(7, this.msisdnNormalize(phone));
-			weTopUpDS.getPreparedStatement().setString(8, this.msisdnNormalize(phone));
-			weTopUpDS.getPreparedStatement().setString(9, this.msisdnNormalize(phone));
+			ps.setString(7, this.msisdnNormalize(phone));
+			ps.setString(8, this.msisdnNormalize(phone));
+			ps.setString(9, this.msisdnNormalize(phone));
 			
-			weTopUpDS.getPreparedStatement().setString(10, address);
-			weTopUpDS.getPreparedStatement().setString(11, address);
-			weTopUpDS.getPreparedStatement().setString(12, address);
+			ps.setString(10, address);
+			ps.setString(11, address);
+			ps.setString(12, address);
 			
-			weTopUpDS.getPreparedStatement().setString(13, dp_img);
-			weTopUpDS.getPreparedStatement().setString(14, dp_img);
-			weTopUpDS.getPreparedStatement().setString(15, location+dp_img);
+			ps.setString(13, dp_img);
+			ps.setString(14, dp_img);
+			ps.setString(15, location+dp_img);
 			
-			weTopUpDS.getPreparedStatement().setString(16, doc_img_01);
-			weTopUpDS.getPreparedStatement().setString(17, doc_img_01);
-			weTopUpDS.getPreparedStatement().setString(18, doc_img_01);
+			ps.setString(16, doc_img_01);
+			ps.setString(17, doc_img_01);
+			ps.setString(18, doc_img_01);
 			
-			weTopUpDS.getPreparedStatement().setString(19, doc_img_02);
-			weTopUpDS.getPreparedStatement().setString(20, doc_img_02);
-			weTopUpDS.getPreparedStatement().setString(21, doc_img_02);
+			ps.setString(19, doc_img_02);
+			ps.setString(20, doc_img_02);
+			ps.setString(21, doc_img_02);
 			
-			weTopUpDS.getPreparedStatement().setString(22, doc_img_03);
-			weTopUpDS.getPreparedStatement().setString(23, doc_img_03);
-			weTopUpDS.getPreparedStatement().setString(24, doc_img_03);
+			ps.setString(22, doc_img_03);
+			ps.setString(23, doc_img_03);
+			ps.setString(24, doc_img_03);
 			
-			weTopUpDS.getPreparedStatement().setString(25, firebaseInstanceID);
-			weTopUpDS.getPreparedStatement().setString(26, firebaseInstanceID);
-			weTopUpDS.getPreparedStatement().setString(27, firebaseInstanceID);
+			ps.setString(25, firebaseInstanceID);
+			ps.setString(26, firebaseInstanceID);
+			ps.setString(27, firebaseInstanceID);
 			
-			weTopUpDS.getPreparedStatement().setInt(28, Integer.parseInt(userID));
+			ps.setInt(28, Integer.parseInt(userID));
 			
-			long updateCount = weTopUpDS.executeUpdate();
-			weTopUpDS.closePreparedStatement();
+			long updateCount = ps.executeUpdate();
+			ps.close();
 			
 			if(updateCount>0) {
 				errorCode = "0";
@@ -1567,11 +1453,11 @@ public class Login {
 		String sql = "insert into user_update_requests (user_id,request_json) value (?,?)";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, userID);
-			weTopUpDS.getPreparedStatement().setString(2, request);
-			weTopUpDS.execute();
-			weTopUpDS.closePreparedStatement();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, userID);
+			ps.setString(2, request);
+			ps.execute();
+			ps.close();
 			errorCode = "0";
 			errorMessage = "insert successful.";
 		} catch (SQLException e) {
@@ -1607,11 +1493,11 @@ public class Login {
 				phone=this.msisdnNormalize(phone);
 				
 				try {
-					weTopUpDS.prepareStatement(sql);
-					weTopUpDS.getPreparedStatement().setString(1, pin);
-					weTopUpDS.getPreparedStatement().setString(2, phone);
-					long updateCount = weTopUpDS.executeUpdate();
-					weTopUpDS.closePreparedStatement();
+					PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+					ps.setString(1, pin);
+					ps.setString(2, phone);
+					long updateCount = ps.executeUpdate();
+					ps.close();
 					if(updateCount>0) {
 						errorCode = "0";
 						errorMessage = "Update successful.";
@@ -1660,25 +1546,25 @@ public class Login {
 		String sql = "UPDATE users_info t SET t.passwd_enc=AES_ENCRYPT(?,concat_ws('',?,?,?,?)) WHERE t.key=? and t.user_id > 0";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, password);
-			weTopUpDS.getPreparedStatement().setString(2, SecretKey.SECRETKEY);//key
-			weTopUpDS.getPreparedStatement().setString(3, keySeed);
-			weTopUpDS.getPreparedStatement().setString(4, keySeed);
-			weTopUpDS.getPreparedStatement().setString(5, keySeed);
-			weTopUpDS.getPreparedStatement().setString(6, key);
-			weTopUpDS.execute();
-			weTopUpDS.closePreparedStatement();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, password);
+			ps.setString(2, SecretKey.SECRETKEY);//key
+			ps.setString(3, keySeed);
+			ps.setString(4, keySeed);
+			ps.setString(5, keySeed);
+			ps.setString(6, key);
+			ps.execute();
+			ps.close();
 			errorCode = "0";
 			errorMessage = "Update successful.";
 			
 			String userInfosql="SELECT u.user_id, u.user_name, case when u.user_email is null then '' else u.user_email end as user_email, u.user_type, u.phone, u.status FROM users_info u where u.key=?";
 
 			try {
-				weTopUpDS.prepareStatement(userInfosql);
-				weTopUpDS.getPreparedStatement().setString(1, key);
+				ps = weTopUpDS.newPrepareStatement(userInfosql);
+				ps.setString(1, key);
 				
-				ResultSet rs = weTopUpDS.executeQuery();
+				ResultSet rs = ps.executeQuery();
 				if (rs.next()) {
 					jsonEncoder.addElement("id", NullPointerExceptionHandler.isNullOrEmpty(rs.getString("user_id"))?"":rs.getString("user_id"));
 					jsonEncoder.addElement("username", NullPointerExceptionHandler.isNullOrEmpty(rs.getString("user_name"))?"":rs.getString("user_name"));
@@ -1713,7 +1599,7 @@ public class Login {
 					this.logWriter.appendLog("fu:F");
 				}
 				rs.close();
-				weTopUpDS.closePreparedStatement();
+				ps.close();
 			}catch(SQLException e){
 				errorCode= "-2";
 				errorMessage = "SQLException.";
@@ -1754,17 +1640,55 @@ public class Login {
 		String sql = "UPDATE users_info t SET t.passwd_enc=AES_ENCRYPT(?,concat_ws('',?,?,?,?)) WHERE t.user_email=? or t.phone=?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, newPassword);
-			weTopUpDS.getPreparedStatement().setString(2, SecretKey.SECRETKEY);//key
-			weTopUpDS.getPreparedStatement().setString(3, keySeed);
-			weTopUpDS.getPreparedStatement().setString(4, keySeed);
-			weTopUpDS.getPreparedStatement().setString(5, keySeed);
-			weTopUpDS.getPreparedStatement().setString(6, credential);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, newPassword);
+			ps.setString(2, SecretKey.SECRETKEY);//key
+			ps.setString(3, keySeed);
+			ps.setString(4, keySeed);
+			ps.setString(5, keySeed);
+			ps.setString(6, credential);
 			credential=this.msisdnNormalize(credential);
-			weTopUpDS.getPreparedStatement().setString(7, credential);
-			weTopUpDS.execute();
-			weTopUpDS.closePreparedStatement();
+			ps.setString(7, credential);
+			ps.execute();
+			ps.close();
+			errorCode = "0";
+			errorMessage = "Update successful.";
+		} catch (SQLException e) {
+			LogWriter.LOGGER.severe(e.getMessage());
+			errorCode = "11";
+			errorMessage = "SQL Exception";
+		}
+
+		jsonEncoder.addElement("ErrorCode", errorCode);
+		jsonEncoder.addElement("ErrorMessage", errorMessage);
+		jsonEncoder.buildJsonObject();
+		return jsonEncoder;
+	}
+	
+	public JsonEncoder changeAdminPassword(String credential, String newPassword) {
+		JsonEncoder jsonEncoder = new JsonEncoder();
+		String errorCode = "-1";
+		String errorMessage = "Update failed.";
+
+		credential=this.msisdnNormalize(credential);
+		
+		String keySeed = fetchkeySeedByAdmin(credential);
+		LogWriter.LOGGER.info("admin keySeed : "+keySeed);
+		
+		String sql = "UPDATE admins_info t SET t.passwd_enc=AES_ENCRYPT(?,concat_ws('',?,?,?,?)) WHERE t.user_email=? or t.phone=?";
+
+		try {
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, newPassword);
+			ps.setString(2, SecretKey.ADMINSECRETKEY);//key
+			ps.setString(3, keySeed);
+			ps.setString(4, keySeed);
+			ps.setString(5, keySeed);
+			ps.setString(6, credential);
+			credential=this.msisdnNormalize(credential);
+			ps.setString(7, credential);
+			ps.execute();
+			ps.close();
 			errorCode = "0";
 			errorMessage = "Update successful.";
 		} catch (SQLException e) {
@@ -1792,15 +1716,15 @@ public class Login {
 		String sql = "UPDATE users_info t SET t.api_key_enc=AES_ENCRYPT(?,concat_ws('',?,?,?,?)) WHERE t.user_id =?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, apikey);
-			weTopUpDS.getPreparedStatement().setString(2, SecretKey.SECRETKEY);//key
-			weTopUpDS.getPreparedStatement().setString(3, apiKeySeed);
-			weTopUpDS.getPreparedStatement().setString(4, apiKeySeed);
-			weTopUpDS.getPreparedStatement().setString(5, apiKeySeed);
-			weTopUpDS.getPreparedStatement().setString(6, user_id);
-			weTopUpDS.execute();
-			weTopUpDS.closePreparedStatement();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, apikey);
+			ps.setString(2, SecretKey.SECRETKEY);//key
+			ps.setString(3, apiKeySeed);
+			ps.setString(4, apiKeySeed);
+			ps.setString(5, apiKeySeed);
+			ps.setString(6, user_id);
+			ps.execute();
+			ps.close();
 			errorCode = "0";
 			errorMessage = "Update successful.";
 			jsonEncoder.addElement("api_key", apikey);
@@ -1825,11 +1749,11 @@ public class Login {
 		String sql = "UPDATE users_info t SET api_token_validity=? WHERE t.user_id =?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, validity);
-			weTopUpDS.getPreparedStatement().setString(2, user_id);
-			weTopUpDS.execute();
-			weTopUpDS.closePreparedStatement();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, validity);
+			ps.setString(2, user_id);
+			ps.execute();
+			ps.close();
 			errorCode = "0";
 			errorMessage = "Update successful.";
 		} catch (SQLException e) {
@@ -1852,11 +1776,11 @@ public class Login {
 		String sql = "UPDATE users_info t SET api_hook_url=? WHERE t.user_id =?";
 
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, api_hook_url);
-			weTopUpDS.getPreparedStatement().setString(2, user_id);
-			weTopUpDS.execute();
-			weTopUpDS.closePreparedStatement();
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, api_hook_url);
+			ps.setString(2, user_id);
+			ps.execute();
+			ps.close();
 			errorCode = "0";
 			errorMessage = "Update successful.";
 		} catch (SQLException e) {
@@ -1875,31 +1799,19 @@ public class Login {
 		String keySeed = "";
 		String sql="select t.key_seed from users_info t where `key`=?";
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, key);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, key);
 			
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				keySeed = rs.getString(1);
 			}
-			weTopUpDS.closeResultSet();
-			weTopUpDS.closePreparedStatement();
+			rs.close();
+			ps.close();
 		}catch(NullPointerException e) {
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		catch(Exception e){
-			if(weTopUpDS.getConnection() != null) {
-				try {
-					weTopUpDS.closeResultSet();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-				try {
-					weTopUpDS.closePreparedStatement();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-			}
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		
@@ -1910,30 +1822,18 @@ public class Login {
 		String location = "";
 		String sql="SELECT location FROM file_location where id=3";
 		try {
-			weTopUpDS.prepareStatement(sql);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
 			
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				location = rs.getString(1);
 			}
-			weTopUpDS.closeResultSet();
-			weTopUpDS.closePreparedStatement();
+			rs.close();
+			ps.close();
 		}catch(NullPointerException e) {
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		catch(Exception e){
-			if(weTopUpDS.getConnection() != null) {
-				try {
-					weTopUpDS.closeResultSet();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-				try {
-					weTopUpDS.closePreparedStatement();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-			}
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		
@@ -1944,33 +1844,21 @@ public class Login {
 		boolean flag = false;
 		String sql="select status from users_info where `user_email`=?";
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, email);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, email);
 			
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				if(rs.getInt(1)==2) {
 					flag = true;
 				}
 			}
-			weTopUpDS.closeResultSet();
-			weTopUpDS.closePreparedStatement();
+			rs.close();
+			ps.close();
 		}catch(NullPointerException e) {
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		catch(Exception e){
-			if(weTopUpDS.getConnection() != null) {
-				try {
-					weTopUpDS.closeResultSet();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-				try {
-					weTopUpDS.closePreparedStatement();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-			}
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		
@@ -1981,10 +1869,10 @@ public class Login {
 		boolean flag = true;
 		String sql="select status from users_info where `user_id`=?";
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, userID);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, userID);
 			
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				if(rs.getInt(1)==10) {
 					flag = true;
@@ -1992,25 +1880,13 @@ public class Login {
 					flag = false;
 				}
 			}
-			weTopUpDS.closeResultSet();
-			weTopUpDS.closePreparedStatement();
+			rs.close();
+			ps.close();
 		}catch(NullPointerException e) {
 			LogWriter.LOGGER.severe(e.getMessage());
 			flag = true;
 		}
 		catch(Exception e){
-			if(weTopUpDS.getConnection() != null) {
-				try {
-					weTopUpDS.closeResultSet();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-				try {
-					weTopUpDS.closePreparedStatement();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-			}
 			LogWriter.LOGGER.severe(e.getMessage());
 			flag = true;
 		}
@@ -2022,33 +1898,21 @@ public class Login {
 		boolean flag = false;
 		String sql="select isPhoneVerified from users_info where `phone`=?";
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, phone);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, phone);
 			
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				if(rs.getInt(1)==1) {
 					flag = true;
 				}
 			}
-			weTopUpDS.closeResultSet();
-			weTopUpDS.closePreparedStatement();
+			rs.close();
+			ps.close();
 		}catch(NullPointerException e) {
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		catch(Exception e){
-			if(weTopUpDS.getConnection() != null) {
-				try {
-					weTopUpDS.closeResultSet();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-				try {
-					weTopUpDS.closePreparedStatement();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-			}
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		
@@ -2059,34 +1923,22 @@ public class Login {
 		boolean flag = false;
 		String sql="select count(*) from users_info where (`user_email`=? or `phone`=?) and last_sent_otp >  NOW() - interval 1 minute";
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, key);
-			weTopUpDS.getPreparedStatement().setString(2, key);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, key);
+			ps.setString(2, key);
 			
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				if(rs.getInt(1)>0) {
 					flag = true;
 				}
 			}
-			weTopUpDS.closeResultSet();
-			weTopUpDS.closePreparedStatement();
+			rs.close();
+			ps.close();
 		}catch(NullPointerException e) {
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		catch(Exception e){
-			if(weTopUpDS.getConnection() != null) {
-				try {
-					weTopUpDS.closeResultSet();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-				try {
-					weTopUpDS.closePreparedStatement();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-			}
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		
@@ -2102,10 +1954,10 @@ public class Login {
 		String errorMessage = "fetchApiInfo failed.";
 		String sql="select ifnull(cast(aes_decrypt( api_key_enc,concat_ws('','$piderT@perEnc~ypt',api_key_seed,api_key_seed,api_key_seed)) as char(1000)),null),api_token_validity,api_hook_url from users_info where user_id = ?";
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, user_id);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, user_id);
 			
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				apiKey = rs.getString(1);
 				api_token_validity = rs.getString(2);
@@ -2113,26 +1965,14 @@ public class Login {
 			}
 			errorCode = "0";
 			errorMessage = "fetchApiInfo successful.";
-			weTopUpDS.closeResultSet();
-			weTopUpDS.closePreparedStatement();
+			rs.close();
+			ps.close();
 		}catch(NullPointerException e) {
 			errorCode = "-5";
 			errorMessage = "NullPointerException";
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		catch(Exception e){
-			if(weTopUpDS.getConnection() != null) {
-				try {
-					weTopUpDS.closeResultSet();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-				try {
-					weTopUpDS.closePreparedStatement();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-			}
 			errorCode = "-3";
 			errorMessage = "GeneralException";
 			LogWriter.LOGGER.severe(e.getMessage());
@@ -2151,33 +1991,46 @@ public class Login {
 		String keySeed = "";
 		String sql="select t.key_seed from users_info t where t.user_email=? or t.phone=?";
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, credential);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, credential);
 			credential=this.msisdnNormalize(credential);
-			weTopUpDS.getPreparedStatement().setString(2, credential);
+			ps.setString(2, credential);
 			
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				keySeed = rs.getString(1);
 			}
-			weTopUpDS.closeResultSet();
-			weTopUpDS.closePreparedStatement();
+			rs.close();
+			ps.close();
 		}catch(NullPointerException e) {
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		catch(Exception e){
-			if(weTopUpDS.getConnection() != null) {
-				try {
-					weTopUpDS.closeResultSet();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-				try {
-					weTopUpDS.closePreparedStatement();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
+			LogWriter.LOGGER.severe(e.getMessage());
+		}
+		
+		return keySeed;
+	}
+	
+	public String fetchkeySeedByAdmin(String credential) {
+		String keySeed = "";
+		String sql="select t.key_seed from admins_info t where t.user_email=? or t.phone=?";
+		try {
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, credential);
+			credential=this.msisdnNormalize(credential);
+			ps.setString(2, credential);
+			
+			ResultSet rs = ps.executeQuery();
+			while (rs.next()) {
+				keySeed = rs.getString(1);
 			}
+			rs.close();
+			ps.close();
+		}catch(NullPointerException e) {
+			LogWriter.LOGGER.severe(e.getMessage());
+		}
+		catch(Exception e){
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		
@@ -2188,31 +2041,19 @@ public class Login {
 		String keySeed = "";
 		String sql="select t.api_key_seed from users_info t where t.user_id=?";
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, credential);
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, credential);
 			
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				keySeed = rs.getString(1);
 			}
 			rs.close();
-			weTopUpDS.closePreparedStatement();
+			ps.close();
 		}catch(NullPointerException e) {
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		catch(Exception e){
-			if(weTopUpDS.getConnection() != null) {
-				try {
-					weTopUpDS.closeResultSet();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-				try {
-					weTopUpDS.closePreparedStatement();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-			}
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		
@@ -2223,31 +2064,19 @@ public class Login {
 		String userAuthToken = "";
 		String sql="select t.user_auth_token from users_info t where  t.phone=?";
 		try {
-			weTopUpDS.prepareStatement(sql);
-			weTopUpDS.getPreparedStatement().setString(1, this.msisdnNormalize(phone));
+			PreparedStatement ps = weTopUpDS.newPrepareStatement(sql);
+			ps.setString(1, this.msisdnNormalize(phone));
 			
-			ResultSet rs = weTopUpDS.executeQuery();
+			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				userAuthToken = rs.getString(1);
 			}
-			weTopUpDS.closeResultSet();
-			weTopUpDS.closePreparedStatement();
+			rs.close();
+			ps.close();
 		}catch(NullPointerException e) {
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		catch(Exception e){
-			if(weTopUpDS.getConnection() != null) {
-				try {
-					weTopUpDS.closeResultSet();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-				try {
-					weTopUpDS.closePreparedStatement();
-				} catch (SQLException e1) {
-					LogWriter.LOGGER.severe(e1.getMessage());
-				}
-			}
 			LogWriter.LOGGER.severe(e.getMessage());
 		}
 		

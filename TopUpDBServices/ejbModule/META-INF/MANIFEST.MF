@@ -1,4 +1,4 @@
 Manifest-Version: 1.0
-Dependencies: com.google
+Dependencies: com.google.gson
 Class-Path: 
 
